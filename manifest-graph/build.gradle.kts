@@ -24,6 +24,15 @@ kotlin {
 
     js(IR) {
         nodejs()
+        // The browser target makes browser use checkable: jsBrowserTest (part of check) loads this
+        // library in headless Chromium, so a Node-only import fails the build here, not in a consumer.
+        browser {
+            testTask {
+                useKarma {
+                    useChromeHeadless()
+                }
+            }
+        }
         binaries.library()
     }
 

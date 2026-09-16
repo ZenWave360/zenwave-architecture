@@ -19,3 +19,5 @@ internal actual fun defaultManifestArchiveEntryLoader(): ManifestArchiveEntryLoa
         }
         throw IllegalStateException("JAR entry '$normalizedEntry' was not found in $uri")
     }
+
+internal actual fun platformManifestCapabilities(): Set<String> = setOf(ManifestPlatform.ARCHIVE_EXTRACTION)

@@ -395,6 +395,30 @@ Candidate and reference construction remains non-blocking on the common loader. 
 `ManifestResolvedResource.referenceUri()` when a consumer needs a single URI-like reference,
 including a resource stored inside an archive.
 
+## Browsers and Web Workers
+
+`manifest-core` and `manifest-graph` load and run in a browser or Web Worker with no Node runtime.
+Supply the means of reading content: every manifest, `$ref`, document and artifact read goes
+through the `DocumentLoader`s you pass, and nothing else is needed to load the library.
+
+```kotlin
+val loader = ZenWaveManifestLoader(documentLoaders = listOf(myHostReader), archiveEntryLoader = null)
+val manifest = loader.load("https://example.com/zenwave-architecture.yml")
+val graph = ArchitectureGraphBuilder(loader).build(manifest).graph
+```
+
+Ask what the platform offers before presenting a feature; asking never fails:
+
+- `ManifestPlatform.capabilities()` / `isAvailable(ManifestPlatform.ARCHIVE_EXTRACTION)`: reading an
+  entry inside an archive (Maven Central/GitHub Packages JARs). Available on the JVM; not on JS unless
+  the host passes its own `ManifestArchiveEntryLoader`.
+- `RefParserPlatform` (from `json-schema-ref-parser-kmp`): filesystem, classpath and HTTP reads.
+
+A candidate that needs an unavailable capability fails with `CapabilityUnavailableException`, and the
+next content-resolution candidate is tried; if none succeeds, the `ManifestResourceLoadException`
+names the capability. The build runs the JS test suites in headless Chromium (`jsBrowserTest`, part of
+`check`; set `CHROME_BIN` if no Chrome, Chromium or Edge is found in a standard location).
+
 ## Kotlin module and verification
 
 `manifest-core` contains common parsing, diagnostics, interpolation, and candidate construction for JVM and JavaScript. JVM also provides Maven Central JAR entry extraction; JavaScript hosts can supply an archive-entry loader.

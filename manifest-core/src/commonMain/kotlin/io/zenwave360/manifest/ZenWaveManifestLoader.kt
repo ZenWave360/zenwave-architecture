@@ -4,6 +4,8 @@ import io.zenwave360.jsonrefparser.RefParser
 import io.zenwave360.jsonrefparser.io.DocumentLoader
 import io.zenwave360.jsonrefparser.io.defaultLoaders
 import io.zenwave360.jsonrefparser.model.ParsedDocument
+import io.zenwave360.jsonrefparser.platform.CapabilityUnavailableException
+import io.zenwave360.jsonrefparser.platform.RefParserPlatform
 import kotlin.jvm.JvmOverloads
 
 class ManifestResolutionException(message: String) : IllegalArgumentException(message)
@@ -364,8 +366,13 @@ class ZenWaveManifestLoader(
         for (candidate in candidates) {
             try {
                 val text = candidate.archiveEntry?.let { entry ->
+                    // No archive reader here (JS without a host-supplied loader): report the
+                    // capability as unavailable and let the next candidate be tried.
                     val loader = archiveEntryLoader
-                        ?: error("No archive-entry loader is available for ${redactUri(candidate.uri)}")
+                        ?: throw CapabilityUnavailableException(
+                            ManifestPlatform.ARCHIVE_EXTRACTION,
+                            RefParserPlatform.name,
+                        )
                     loader.loadEntry(candidate.uri, entry)
                 } ?: loadText(candidate.uri)
                 return candidate to text
