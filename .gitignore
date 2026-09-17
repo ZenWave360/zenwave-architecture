@@ -6,3 +6,7 @@ out/
 dist/
 build/
 Thumbs.db
+
+# Local Serena HTTP client wiring (localhost ports; do not commit)
+.codex/
+.grok/config.toml
