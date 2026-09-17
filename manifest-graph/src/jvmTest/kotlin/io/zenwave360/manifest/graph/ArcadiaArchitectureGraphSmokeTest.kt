@@ -12,11 +12,11 @@ import kotlin.test.assertTrue
 class ArcadiaArchitectureGraphSmokeTest {
     @Test
     fun buildsLocalArcadiaArchitectureGraphWhenConfigured() = runTest {
-        val configuredPath = System.getProperty("arcadia.architecture")
-            ?.takeIf(String::isNotBlank)
-            ?: return@runTest
+        val configuredPath = System.getProperty("arcadia.architecture")?.takeIf(String::isNotBlank)
+        val manifestUri = configuredPath?.let { Path.of(it).toUri().toString() }
+            ?: requireNotNull(javaClass.getResource("/arcadia-editions/zenwave.yml")).toURI().toString()
         val loader = ZenWaveManifestLoader()
-        val manifest = loader.load(Path.of(configuredPath).toUri().toString())
+        val manifest = loader.load(manifestUri)
 
         val result = ArchitectureGraphBuilder(loader).build(manifest)
         val graph = result.graph
@@ -25,31 +25,32 @@ class ArcadiaArchitectureGraphSmokeTest {
         })
         val declaredSystems = graph.edges(ArchitectureEdgeKind.DECLARES_DOMAIN)
             .filter { edge -> graph.node(edge.source)?.kind == ArchitectureNodeKind.ZFL_SYSTEM }
-        assertEquals(
-            5,
-            declaredSystems.size,
-            result.diagnostics.joinToString("\n") { "${it.code}: ${it.message}" },
-        )
+        assertEquals(if (configuredPath == null) 1 else 5, declaredSystems.size,
+            result.diagnostics.joinToString("\n") { "${it.code}: ${it.message}" })
         assertTrue(graph.outgoing(flow.id).isNotEmpty())
-        assertTrue(graph.edges(ArchitectureEdgeKind.INVOKES).any { edge ->
-            graph.node(edge.source)?.kind == ArchitectureNodeKind.ZFL_STEP &&
-                graph.node(edge.target)?.kind == ArchitectureNodeKind.ZDL_METHOD
-        })
+        assertEquals("flows.PlaceOrderFlow", flow.source?.semanticPath)
+        assertTrue(graph.edges(
+            if (configuredPath == null) ArchitectureEdgeKind.RESOLVES_TO else ArchitectureEdgeKind.INVOKES,
+        ).any { edge -> graph.node(edge.target)?.kind == ArchitectureNodeKind.ZDL_METHOD })
         assertTrue(graph.nodes.any { it.kind == ArchitectureNodeKind.CHANNEL })
+        assertTrue(graph.nodes.any { it.kind == ArchitectureNodeKind.EVENT && it.label == "OrderPlaced" })
 
-        val authorizePayment = assertNotNull(graph.nodes.singleOrNull {
-            it.kind == ArchitectureNodeKind.ZDL_METHOD &&
-                it.attributes["asyncapiApi"] == "PaymentsProcessingApi" &&
-                it.attributes["asyncapiChannel"] == "payment-authorized-event-v1"
-        })
-        assertTrue(graph.outgoing(authorizePayment.id).any { edge ->
-            edge.kind == ArchitectureEdgeKind.CONSUMES &&
-                graph.node(edge.target)?.kind == ArchitectureNodeKind.CHANNEL &&
-                graph.node(edge.target)?.attributes?.get("channelKey") == "payment-authorized-event-v1"
-        }, buildString {
-            appendLine("Outgoing: ${graph.outgoing(authorizePayment.id)}")
-            append(result.diagnostics.joinToString("\n") { "${it.code}: ${it.message}" })
-        })
+        if (configuredPath != null) {
+            val authorizePayment = assertNotNull(graph.nodes.singleOrNull {
+                it.kind == ArchitectureNodeKind.ZDL_METHOD &&
+                    it.attributes["asyncapiApi"] == "PaymentsProcessingApi" &&
+                    it.attributes["asyncapiChannel"] == "payment-authorized-event-v1"
+            })
+            assertTrue(graph.outgoing(authorizePayment.id).any { edge ->
+                edge.kind == ArchitectureEdgeKind.CONSUMES &&
+                    graph.node(edge.target)?.kind == ArchitectureNodeKind.CHANNEL &&
+                    graph.node(edge.target)?.attributes?.get("channelKey") == "payment-authorized-event-v1"
+            })
+        } else {
+            val event = graph.nodes.single { it.kind == ArchitectureNodeKind.EVENT && it.label == "OrderPlaced" }
+            assertTrue(graph.incoming(event.id, ArchitectureEdgeKind.REPRESENTS).size >= 3)
+            assertTrue(graph.incoming(event.id, ArchitectureEdgeKind.PUBLISHES).isNotEmpty())
+        }
         assertFalse(result.diagnostics.any { it.code == "dangling-graph-edge" })
     }
 }

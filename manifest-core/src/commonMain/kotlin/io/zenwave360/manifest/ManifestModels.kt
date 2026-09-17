@@ -93,6 +93,7 @@ data class ManifestDomain(
     override val groupId: String? = null,
     override val artifacts: List<ManifestArtifact> = emptyList(),
     val docs: Map<String, String> = emptyMap(),
+    val aliases: List<String> = emptyList(),
 ) : ManifestArtifactOwner {
     override val artifactOwnerRef: String
         get() = key
@@ -109,6 +110,7 @@ data class ManifestSubdomain(
     val name: String? = null,
     val description: String? = null,
     val services: List<ManifestService> = emptyList(),
+    val aliases: List<String> = emptyList(),
 )
 
 data class ManifestService(
@@ -129,6 +131,7 @@ data class ManifestService(
     override val artifacts: List<ManifestArtifact> = emptyList(),
     val consumers: List<String> = emptyList(),
     override val repository: String? = null,
+    val aliases: List<String> = emptyList(),
 ) : ManifestArtifactOwner {
     override val artifactOwnerRef: String
         get() = serviceRef

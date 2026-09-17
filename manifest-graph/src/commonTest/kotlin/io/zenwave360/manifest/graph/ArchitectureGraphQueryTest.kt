@@ -10,13 +10,53 @@ import kotlin.test.assertTrue
 
 class ArchitectureGraphQueryTest {
     @Test
+    fun resolvesCanonicalIdsAliasesAndAliasDescendants() = runTest {
+        val loader = ZenWaveManifestLoader(emptyList(), archiveEntryLoader = null)
+        val manifest = loader.parse(
+            "file:///workspace/zenwave.yml",
+            """
+            domains:
+              sales:
+                aliases: [commerce]
+                subdomains:
+                  ordering:
+                    services:
+                      order-service:
+                        aliases: [orders-service]
+                        artifacts:
+                          - { artifactId: orders-api, type: openapi, path: api.yml, version: 1.0.0 }
+            """.trimIndent(),
+        )
+        val graph = ArchitectureGraphBuilder(loader, emptyList()).build(manifest).graph
+
+        val canonical = SemanticId("zw:sales/ordering/order-service")
+        val direct = graph.resolve(canonical) as SemanticResolutionResult.Resolved
+        assertEquals(canonical.value, direct.node.id)
+        assertEquals(null, direct.redirectedFrom)
+
+        val alias = SemanticId("zw:sales/ordering/orders-service")
+        val redirected = graph.resolve(alias) as SemanticResolutionResult.Resolved
+        assertEquals(canonical.value, redirected.node.id)
+        assertEquals(alias, redirected.redirectedFrom)
+
+        val descendantAlias = SemanticId("zw:commerce/ordering/order-service/artifact/orders-api")
+        val descendant = graph.resolve(descendantAlias) as SemanticResolutionResult.Resolved
+        assertEquals("zw:sales/ordering/order-service/artifact/orders-api", descendant.node.id)
+        assertEquals(descendantAlias, descendant.redirectedFrom)
+
+        val versioned = graph.resolve(SemanticId("zw:sales/ordering/order-service/artifact/orders-api@1.0.0"))
+            as SemanticResolutionResult.Resolved
+        assertEquals("zw:sales/ordering/order-service/artifact/orders-api", versioned.node.id)
+    }
+
+    @Test
     fun exposesStableResourceIdsAndDecodesTypedBindings() {
         assertEquals(
-            "artifact/orders%002Fcheckout/async%0020api%00231/channel/channels.orders%002F%007Bid%007D",
+            "zw:orders/checkout/channel/orders%2F%7Bid%7D",
             ArchitectureGraphIds.channel("orders/checkout", "async api#1", "orders/{id}"),
         )
         assertEquals(
-            "artifact/orders%002Fcheckout/open%0020api%00231/api_operation/operations.GET%0020%002Forders%002F%007Bid%007D",
+            "zw:orders/checkout/api-operation/GET%20%2Forders%2F%7Bid%7D",
             ArchitectureGraphIds.apiOperation("orders/checkout", "open api#1", "GET /orders/{id}"),
         )
         val edge = ArchitectureEdge(
@@ -60,12 +100,24 @@ class ArchitectureGraphQueryTest {
         val consumerOperation = graph.nodes.single {
             it.kind == ArchitectureNodeKind.API_OPERATION && it.label == "onOrderPlaced"
         }
+        val eventConcept = graph.nodes.single {
+            it.kind == ArchitectureNodeKind.EVENT && it.label == "OrderPlaced"
+        }
+        val representations = graph.incoming(eventConcept.id, ArchitectureEdgeKind.REPRESENTS)
+            .mapNotNull { graph.node(it.source) }
 
         val projection = graph.subgraphFrom(flow.id, maxDepth = 5)
         assertTrue(projection.nodes.any { it.kind == ArchitectureNodeKind.ZDL_METHOD && it.label == "placeOrder" })
         assertTrue(projection.nodes.any { it.id == channel.id })
         assertTrue(graph.consumersOf(channel.id).any { it.id == consumerOperation.id })
         assertTrue(graph.edges(ArchitectureEdgeKind.TRIGGERS).size >= 2)
+        assertTrue(representations.any { it.kind == ArchitectureNodeKind.ZDL_EVENT })
+        assertTrue(representations.any { it.kind == ArchitectureNodeKind.ZFL_EVENT })
+        assertTrue(representations.any { it.kind == ArchitectureNodeKind.CHANNEL })
+        assertTrue(eventConcept.evidence.map { it.kind }.containsAll(listOf("zdl", "zfl", "asyncapi")))
+        assertTrue(graph.incoming(eventConcept.id, ArchitectureEdgeKind.PUBLISHES).any { edge ->
+            graph.node(edge.source)?.kind == ArchitectureNodeKind.SERVICE
+        })
         assertEquals("sales.orders", graph.owningService(channel.id)?.label)
         assertTrue(graph.edges.any {
             it.kind == ArchitectureEdgeKind.CONSUMES && it.source == consumerOperation.id && it.target == channel.id &&

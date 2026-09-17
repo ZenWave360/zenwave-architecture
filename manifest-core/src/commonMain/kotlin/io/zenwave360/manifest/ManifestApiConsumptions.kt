@@ -36,6 +36,7 @@ class OpenApiOperationIndex internal constructor(
     val operations: List<OpenApiOperation>,
     val version: String?,
     val diagnostics: List<ManifestDiagnostic>,
+    val sourceUri: String,
 ) {
     fun byMethodAndPath(method: String, path: String): List<OpenApiOperation> = operations.filter {
         it.method == method.uppercase() && it.normalizedPath == normalizeOpenApiPath(path)
@@ -63,6 +64,7 @@ data class AsyncApiChannel(
     val summary: String?,
     val description: String?,
     val operations: List<AsyncApiOperationRef>,
+    val messageName: String? = null,
 )
 
 class AsyncApiChannelIndex internal constructor(
@@ -70,6 +72,7 @@ class AsyncApiChannelIndex internal constructor(
     val version: String?,
     val protocols: List<String>,
     val diagnostics: List<ManifestDiagnostic>,
+    val sourceUri: String,
 ) {
     private val channelsByAddress = channels.values.filter { it.address != null }.groupBy { it.address!! }
 
@@ -277,6 +280,7 @@ private suspend fun parseOpenApiContract(text: String, location: String): OpenAp
         operations = operations,
         version = root["info"].stringMap()["version"]?.toString(),
         diagnostics = diagnostics,
+        sourceUri = location,
     )
 } catch (error: Exception) {
     OpenApiOperationIndex(
@@ -287,6 +291,7 @@ private suspend fun parseOpenApiContract(text: String, location: String): OpenAp
             "openapi-parse-failed",
             location,
         )),
+        sourceUri = location,
     )
 }
 
@@ -336,6 +341,8 @@ private suspend fun parseAsyncApiContract(text: String, location: String): Parse
                 summary = channel["summary"]?.toString(),
                 description = channel["description"]?.toString(),
                 operations = operations,
+                messageName = channel["messages"].stringMap().keys.firstOrNull()
+                    ?: operations.firstOrNull()?.operationId?.semanticOperationName(),
             )
         }
         val protocols = root["servers"].stringMap().values.mapNotNull { server ->
@@ -346,7 +353,7 @@ private suspend fun parseAsyncApiContract(text: String, location: String): Parse
             root = root,
             channels = rawChannels,
             operations = rawOperations,
-            index = AsyncApiChannelIndex(channels, version, protocols, diagnostics),
+            index = AsyncApiChannelIndex(channels, version, protocols, diagnostics, location),
         )
     } catch (error: Exception) {
         val diagnostic = warning(
@@ -358,7 +365,7 @@ private suspend fun parseAsyncApiContract(text: String, location: String): Parse
             root = emptyMap(),
             channels = emptyMap(),
             operations = emptyMap(),
-            index = AsyncApiChannelIndex(emptyMap(), null, emptyList(), listOf(diagnostic)),
+            index = AsyncApiChannelIndex(emptyMap(), null, emptyList(), listOf(diagnostic), location),
         )
     }
 }
@@ -399,6 +406,13 @@ private fun classifyMessage(
         AsyncApiMessageKind.COMMAND
     }
 }
+
+private fun String.semanticOperationName(): String = removePrefix("publish")
+    .removePrefix("subscribe")
+    .removePrefix("send")
+    .removePrefix("receive")
+    .takeIf(String::isNotBlank)
+    ?: this
 
 private fun messageKind(value: Any?): AsyncApiMessageKind? = when (value?.toString()?.trim()?.lowercase()) {
     "event" -> AsyncApiMessageKind.EVENT

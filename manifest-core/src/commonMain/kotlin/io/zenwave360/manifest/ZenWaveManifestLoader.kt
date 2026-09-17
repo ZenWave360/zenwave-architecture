@@ -746,6 +746,7 @@ class ZenWaveManifestLoader(
             groupId = (value["groupId"] as? String).nonBlankOrNull(),
             artifacts = artifacts,
             docs = docs,
+            aliases = value.listAt("aliases").mapNotNull { it?.toString().nonBlankOrNull() },
         )
     }
 
@@ -774,6 +775,7 @@ class ZenWaveManifestLoader(
             value["name"]?.toString(),
             value["description"]?.toString(),
             services,
+            value.listAt("aliases").mapNotNull { it?.toString().nonBlankOrNull() },
         )
     }
 
@@ -811,6 +813,7 @@ class ZenWaveManifestLoader(
             docs = docs,
             artifacts = artifacts,
             consumers = value.listAt("consumers").mapNotNull { normalizeConsumer(domainKey, it) },
+            aliases = value.listAt("aliases").mapNotNull { it?.toString().nonBlankOrNull() },
         )
     }
 
@@ -1083,7 +1086,7 @@ class ZenWaveManifestLoader(
                 if (resolved == null) {
                     diagnostics += ManifestDiagnostic(
                         message = "Consumer service '${reference.serviceReference}' cannot be resolved",
-                        severity = ManifestDiagnosticSeverity.WARNING,
+                        severity = ManifestDiagnosticSeverity.ERROR,
                         code = "unresolved-consumer-reference",
                         location = "${declaringService.serviceRef}.consumers[$index]",
                     )

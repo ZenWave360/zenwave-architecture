@@ -15,6 +15,7 @@ import kotlin.jvm.JvmOverloads
 class ArchitectureGraphBuilder @JvmOverloads constructor(
     private val loader: ZenWaveManifestLoader = ZenWaveManifestLoader(),
     private val analyzers: List<ManifestGraphArtifactAnalyzer> = defaultArtifactAnalyzers(),
+    private val relationshipResolvers: List<RelationshipResolver> = emptyList(),
 ) {
     suspend fun build(
         manifest: ZenWaveManifest,
@@ -35,6 +36,7 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
         }
 
         addManifestStructure(manifest, nodes, edges)
+        validateSemanticNamespace(nodes, diagnostics)
 
         val catalog = try {
             ManifestArtifactCatalog.resolve(manifest, loader)
@@ -50,7 +52,8 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
 
         catalog.artifacts.forEach { artifact -> addArtifact(artifact, manifest, nodes, edges) }
 
-        val apiConsumptions = if (options.includeDeclaredConsumers || options.includeApiConsumptions) {
+        val hasApiArtifacts = catalog.artifacts.any { it.artifact.type in setOf("openapi", "asyncapi", "asyncapi-client") }
+        val apiConsumptions = if (options.includeDeclaredConsumers || options.includeApiConsumptions || hasApiArtifacts) {
             ManifestApiConsumptions.build(
                 manifest,
                 loader,
@@ -67,9 +70,12 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
         if (options.includeDeclaredConsumers && apiConsumptions != null) {
             addDeclaredConsumers(apiConsumptions.consumerIndex, manifest, nodes, edges)
         }
-        if (options.includeApiConsumptions && apiConsumptions != null) {
+        if (apiConsumptions != null && hasApiArtifacts) {
             merge(
-                ApiConsumptionGraphContributor.contribute(apiConsumptions, catalog, manifest.uri),
+                ApiConsumptionGraphContributor.contribute(
+                    apiConsumptions, catalog, manifest.uri,
+                    includeConsumptionMatches = options.includeApiConsumptions,
+                ),
                 nodes,
                 edges,
                 diagnostics,
@@ -86,9 +92,10 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
             if (content == null || resource == null) {
                 diagnostics += ArchitectureDiagnostic(
                     message = loaded.errorMessage ?: "Cannot load artifact '${artifact.artifact.path}'",
-                    severity = ArchitectureDiagnosticSeverity.WARNING,
+                    severity = if (artifact.isRemoteLocation(loaded.errorMessage)) ArchitectureDiagnosticSeverity.WARNING else ArchitectureDiagnosticSeverity.ERROR,
                     code = "artifact-load-failed",
                     source = artifactSource(manifest.uri, artifact),
+                    semanticId = artifactNodeId(artifact),
                 )
                 continue
             }
@@ -108,6 +115,7 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
                         severity = ArchitectureDiagnosticSeverity.WARNING,
                         code = "artifact-analysis-failed",
                         source = artifactSource(resource.referenceUri(), artifact),
+                        semanticId = artifactNodeId(artifact),
                     )
                     return@forEach
                 }
@@ -117,6 +125,17 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
 
         linkCrossArtifactEvidence(nodes, edges, diagnostics)
         validateBindingEdges(nodes, edges, diagnostics)
+        merge(ConceptGraphContributor.contribute(nodes, edges), nodes, edges, diagnostics)
+        relationshipResolvers.forEach { resolver ->
+            val contribution = resolver.resolve(
+                RelationshipResolverContext(manifest, ArchitectureGraph(nodes.values.toList(), edges.values.toList())),
+            )
+            merge(
+                enforceResolverConfidence(contribution, resolver.maxConfidence, diagnostics),
+                nodes, edges, diagnostics,
+            )
+        }
+        validateConceptRepresentations(nodes, edges, diagnostics)
 
         val unresolvedSemanticInvocations = edges.values.filter { edge ->
             edge.kind == ArchitectureEdgeKind.INVOKES &&
@@ -126,8 +145,8 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
         unresolvedSemanticInvocations.forEach { edge ->
             diagnostics += ArchitectureDiagnostic(
                 message = "ZFL invocation '${edge.source}' cannot resolve ZDL method '${edge.target}'",
-                severity = ArchitectureDiagnosticSeverity.WARNING,
-                code = "unresolved-zdl-method-reference",
+                    severity = ArchitectureDiagnosticSeverity.ERROR,
+                    code = "unresolved-zdl-method-reference",
                 source = edge.sourceInfo,
             )
             edges.remove(edge.id)
@@ -140,8 +159,8 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
             diagnostics += ArchitectureDiagnostic(
                 message = "ZFL ${if (sourceNode?.kind == ArchitectureNodeKind.ZFL_EVENT) "event" else "operation"} " +
                     "'${sourceNode?.label ?: edge.source}' cannot resolve its declared ZDL target",
-                severity = ArchitectureDiagnosticSeverity.WARNING,
-                code = if (sourceNode?.kind == ArchitectureNodeKind.ZFL_EVENT) "unresolved-zfl-event" else "unresolved-zfl-operation",
+                    severity = ArchitectureDiagnosticSeverity.ERROR,
+                    code = if (sourceNode?.kind == ArchitectureNodeKind.ZFL_EVENT) "unresolved-zfl-event" else "unresolved-zfl-operation",
                 source = edge.sourceInfo ?: sourceNode?.source,
             )
             edges.remove(edge.id)
@@ -151,16 +170,19 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
         missingTargets.forEach { edge ->
             diagnostics += ArchitectureDiagnostic(
                 message = "Graph edge '${edge.id}' refers to a missing node",
-                severity = ArchitectureDiagnosticSeverity.WARNING,
+                severity = ArchitectureDiagnosticSeverity.ERROR,
                 code = "dangling-graph-edge",
                 source = edge.sourceInfo,
             )
             edges.remove(edge.id)
         }
 
+        val semanticAliases = semanticAliases(manifest, nodes.keys)
+        diagnostics += semanticAliases.diagnostics
+        val keyedDiagnostics = keyDiagnostics(diagnostics, nodes, edges)
         return ArchitectureGraphResult(
-            graph = ArchitectureGraph(nodes.values.toList(), edges.values.toList()),
-            diagnostics = diagnostics,
+            graph = ArchitectureGraph(nodes.values.toList(), edges.values.toList(), semanticAliases.values),
+            diagnostics = keyedDiagnostics,
         )
     }
 
@@ -177,6 +199,7 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
                 label = domain.name ?: domain.id,
                 attributes = attributes("key" to domain.key, "version" to domain.version),
                 source = ArchitectureSource(manifest.uri, semanticPath = "domains.${domain.key}"),
+                identityOrigin = ArchitectureIdentityOrigin.EXPLICIT,
             )
             domain.subdomains.forEach { subdomain ->
                 val subdomainId = ArchitectureGraphIds.subdomain(domain.key, subdomain.key)
@@ -190,6 +213,7 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
                         manifest.uri,
                         semanticPath = "domains.${domain.key}.subdomains.${subdomain.key}",
                     ),
+                    identityOrigin = ArchitectureIdentityOrigin.EXPLICIT,
                 )
                 addEdge(edges, ArchitectureEdgeKind.CONTAINS, domainId, subdomainId, ArchitectureProvenanceKind.MANIFEST)
                 subdomain.services.forEach { service -> addService(manifest, service, subdomainId, nodes, edges) }
@@ -224,6 +248,7 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
                 "version" to service.version,
             ),
             source = ArchitectureSource(manifest.uri, semanticPath = service.serviceRef),
+            identityOrigin = ArchitectureIdentityOrigin.EXPLICIT,
         )
         if (parentId != null) addEdge(edges, ArchitectureEdgeKind.CONTAINS, parentId, serviceId, ArchitectureProvenanceKind.MANIFEST)
     }
@@ -252,6 +277,9 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
                 "repository" to artifact.repository,
             ),
             source = artifactSource(manifest.uri, artifact),
+            identityOrigin = if (artifact.artifact.artifactId.isNullOrBlank()) {
+                ArchitectureIdentityOrigin.DERIVED
+            } else ArchitectureIdentityOrigin.EXPLICIT,
         )
         addEdge(edges, ArchitectureEdgeKind.DECLARES_ARTIFACT, ownerId, id, ArchitectureProvenanceKind.MANIFEST)
     }
@@ -329,6 +357,7 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
                             ArchitectureBindingAttributes.PATH to target.attributes["path"],
                         ),
                         source = method.source,
+                        confidence = ArchitectureConfidence.INFERRED_HEURISTIC,
                     )
                 } else {
                     diagnostics += ArchitectureDiagnostic(
@@ -357,7 +386,7 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
             if (channel == null) {
                 diagnostics += ArchitectureDiagnostic(
                     message = "ZDL method '${method.label}' references unresolved AsyncAPI channel '${channelKey ?: topic}'",
-                    severity = ArchitectureDiagnosticSeverity.WARNING,
+                    severity = ArchitectureDiagnosticSeverity.ERROR,
                     code = "unresolved-channel-reference",
                     source = method.source,
                 )
@@ -432,7 +461,7 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
             if (channel == null) {
                 diagnostics += ArchitectureDiagnostic(
                     message = "ZDL event '${event.label}' references unresolved AsyncAPI channel '${channelKey ?: topic}'",
-                    severity = ArchitectureDiagnosticSeverity.WARNING,
+                    severity = ArchitectureDiagnosticSeverity.ERROR,
                     code = "unresolved-channel-reference",
                     source = event.source,
                 )
@@ -499,28 +528,33 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
     ) {
         contribution.nodes.forEach { node ->
             val existing = nodes[node.id]
-            if (existing != null && existing != node) {
+            if (existing != null && existing.copy(evidence = emptyList()) != node.copy(evidence = emptyList())) {
                 diagnostics += ArchitectureDiagnostic(
                     message = "Analyzer produced conflicting node id '${node.id}'",
-                    severity = ArchitectureDiagnosticSeverity.WARNING,
+                    severity = ArchitectureDiagnosticSeverity.ERROR,
                     code = "duplicate-graph-node",
                     source = node.source,
                 )
             } else {
-                nodes[node.id] = node
+                nodes[node.id] = if (existing == null) node else existing.copy(
+                    evidence = (existing.evidence + node.evidence).distinct(),
+                )
             }
         }
         contribution.edges.forEach { edge ->
             val existing = edges[edge.id]
-            if (existing != null && existing != edge) {
+            if (existing != null && existing.structuralIdentity() != edge.structuralIdentity()) {
                 diagnostics += ArchitectureDiagnostic(
                     message = "Analyzer produced conflicting edge id '${edge.id}'",
-                    severity = ArchitectureDiagnosticSeverity.WARNING,
+                    severity = ArchitectureDiagnosticSeverity.ERROR,
                     code = "duplicate-graph-edge",
                     source = edge.sourceInfo,
                 )
             } else {
-                edges[edge.id] = edge
+                edges[edge.id] = if (existing == null) edge else existing.copy(
+                    confidence = strongerConfidence(existing.confidence, edge.confidence),
+                    evidence = (existing.evidence + edge.evidence).distinct(),
+                )
             }
         }
         diagnostics += contribution.diagnostics
@@ -555,6 +589,141 @@ private fun ArchitectureNode.ownerChain(nodes: Map<String, ArchitectureNode>): S
     }
 }
 
+private fun strongerConfidence(
+    left: ArchitectureConfidence,
+    right: ArchitectureConfidence,
+): ArchitectureConfidence {
+    val order = listOf(
+        ArchitectureConfidence.INFERRED_HEURISTIC,
+        ArchitectureConfidence.INFERRED_EXACT,
+        ArchitectureConfidence.RESOLVED,
+        ArchitectureConfidence.DECLARED,
+    )
+    return if (order.indexOf(left) >= order.indexOf(right)) left else right
+}
+
+private fun enforceResolverConfidence(
+    contribution: ManifestGraphContribution,
+    maximum: ArchitectureConfidence,
+    diagnostics: MutableList<ArchitectureDiagnostic>,
+): ManifestGraphContribution {
+    val strength = listOf(
+        ArchitectureConfidence.INFERRED_HEURISTIC,
+        ArchitectureConfidence.INFERRED_EXACT,
+        ArchitectureConfidence.RESOLVED,
+        ArchitectureConfidence.DECLARED,
+    )
+    fun capped(evidence: ArchitectureEvidence): ArchitectureEvidence =
+        if (strength.indexOf(evidence.confidence) > strength.indexOf(maximum)) evidence.copy(confidence = maximum)
+        else evidence
+    val nodes = contribution.nodes.map { node ->
+        val exceeded = node.evidence.any { strength.indexOf(it.confidence) > strength.indexOf(maximum) }
+        if (exceeded) diagnostics += ArchitectureDiagnostic(
+            message = "Relationship resolver emitted node evidence above its declared maximum $maximum",
+            severity = ArchitectureDiagnosticSeverity.ERROR,
+            code = "resolver-confidence-exceeded",
+            source = node.source,
+            semanticId = node.id.takeIf { it.startsWith("zw:") },
+        )
+        node.copy(evidence = node.evidence.map(::capped))
+    }
+    return contribution.copy(nodes = nodes, edges = contribution.edges.map { edge ->
+        if (strength.indexOf(edge.confidence) <= strength.indexOf(maximum)) return@map edge
+        diagnostics += ArchitectureDiagnostic(
+            message = "Relationship resolver emitted ${edge.confidence} above its declared maximum $maximum",
+            severity = ArchitectureDiagnosticSeverity.ERROR,
+            code = "resolver-confidence-exceeded",
+            source = edge.sourceInfo,
+            semanticId = edge.source.takeIf { it.startsWith("zw:") },
+        )
+        edge.copy(
+            confidence = maximum,
+            evidence = edge.evidence.map { evidence -> evidence.copy(confidence = maximum) },
+        )
+    })
+}
+
+private fun keyDiagnostics(
+    diagnostics: List<ArchitectureDiagnostic>,
+    nodes: Map<String, ArchitectureNode>,
+    edges: Map<String, ArchitectureEdge>,
+): List<ArchitectureDiagnostic> {
+    val representedConcept = edges.values
+        .filter { it.kind == ArchitectureEdgeKind.REPRESENTS }
+        .associate { it.source to it.target }
+    return diagnostics.map { diagnostic ->
+        if (diagnostic.semanticId != null) return@map diagnostic
+        val source = diagnostic.source ?: return@map diagnostic
+        val representation = nodes.values.firstOrNull { node ->
+            val nodeSource = node.source
+            nodeSource?.artifactOwnerRef == source.artifactOwnerRef &&
+                nodeSource?.artifactId == source.artifactId &&
+                source.artifactId != null &&
+                (source.semanticPath == null || nodeSource?.semanticPath == source.semanticPath)
+        } ?: nodes.values.firstOrNull { node ->
+            val nodeSource = node.source
+            source.semanticPath != null && nodeSource?.uri == source.uri && nodeSource.semanticPath == source.semanticPath
+        }
+        diagnostic.copy(semanticId = representation?.let { representedConcept[it.id] ?: it.id })
+    }
+}
+
+private fun ArchitectureEdge.structuralIdentity(): List<Any?> =
+    listOf(id, kind, source, target, label, attributes)
+
+private fun ResolvedManifestArtifact.isRemoteLocation(errorMessage: String?): Boolean {
+    val values = listOfNotNull(artifact.path, repository, errorMessage)
+    return values.any {
+        it.contains("http://") || it.contains("https://") || it.contains("git:") ||
+            it.contains("maven:") || it.contains("jar:")
+    }
+}
+
+private fun validateConceptRepresentations(
+    nodes: Map<String, ArchitectureNode>,
+    edges: Map<String, ArchitectureEdge>,
+    diagnostics: MutableList<ArchitectureDiagnostic>,
+) {
+    val represented = edges.values.asSequence()
+        .filter { it.kind == ArchitectureEdgeKind.REPRESENTS }
+        .map { it.source }
+        .toSet()
+    nodes.values.filter { node ->
+        node.kind == ArchitectureNodeKind.CHANNEL ||
+            node.kind == ArchitectureNodeKind.API_OPERATION && node.attributes["intent"] == "command"
+    }.filter { it.id !in represented }.forEach { node ->
+        diagnostics += ArchitectureDiagnostic(
+            message = "${node.kind.name.lowercase().replace('_', ' ')} '${node.label}' has no architecture concept",
+            severity = ArchitectureDiagnosticSeverity.ERROR,
+            code = "missing-represents-edge",
+            source = node.source,
+            semanticId = node.id,
+        )
+    }
+}
+
+private fun validateSemanticNamespace(
+    nodes: Map<String, ArchitectureNode>,
+    diagnostics: MutableList<ArchitectureDiagnostic>,
+) {
+    val reserved = conceptKinds.map { it.name.lowercase().replace('_', '-') }.toSet() +
+        setOf("artifact", "channel", "api-operation")
+    nodes.values.filter { node ->
+        val ownerKind = node.ownerId?.let(nodes::get)?.kind
+        (node.kind == ArchitectureNodeKind.SUBDOMAIN ||
+            node.kind == ArchitectureNodeKind.SERVICE && ownerKind == ArchitectureNodeKind.DOMAIN) &&
+            node.id.substringAfterLast('/') in reserved
+    }.forEach { node ->
+        diagnostics += ArchitectureDiagnostic(
+            message = "Structural segment '${node.id.substringAfterLast('/')}' is reserved for semantic node kinds",
+            severity = ArchitectureDiagnosticSeverity.ERROR,
+            code = "reserved-semantic-segment",
+            source = node.source,
+            semanticId = node.id,
+        )
+    }
+}
+
 private fun normalizePath(path: String): String = path
     .replace(Regex("\\{[^}/]+}"), "{}")
     .replace(Regex("/+"), "/")
@@ -577,9 +746,12 @@ internal fun addEdge(
     label: String? = null,
     attributes: Map<String, String> = emptyMap(),
     source: ArchitectureSource? = null,
+    confidence: ArchitectureConfidence = provenance.defaultConfidence(),
 ) {
     val id = ArchitectureGraphIds.edge(kind, sourceId, targetId, discriminator)
-    edges[id] = ArchitectureEdge(id, kind, sourceId, targetId, label, attributes, provenance, source)
+    edges[id] = ArchitectureEdge(
+        id, kind, sourceId, targetId, label, attributes, provenance, source, confidence,
+    )
 }
 
 internal fun attributes(vararg values: Pair<String, String?>): Map<String, String> =

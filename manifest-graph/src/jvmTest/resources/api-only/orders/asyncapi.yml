@@ -1,0 +1,22 @@
+asyncapi: 3.0.0
+info: { title: Orders Events, version: 1.0.0 }
+channels:
+  order-placed:
+    address: orders.placed
+    messages:
+      OrderPlaced:
+        $ref: '#/components/messages/OrderPlaced'
+operations:
+  publishOrderPlaced:
+    action: send
+    channel: { $ref: '#/channels/order-placed' }
+  observeOrderPlaced:
+    action: receive
+    channel: { $ref: '#/channels/order-placed' }
+components:
+  messages:
+    OrderPlaced:
+      payload:
+        type: object
+        properties:
+          orderId: { type: string }

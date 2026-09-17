@@ -90,7 +90,8 @@ internal class ZflGraphArtifactAnalyzer : ManifestGraphArtifactAnalyzer {
                 label = flow.name,
                 ownerId = artifactId,
                 description = flow.description,
-                source = flow.sourceRef?.toArchitectureSource(context),
+                source = flow.sourceRef?.toArchitectureSource(context, flowPath),
+                identityOrigin = ArchitectureIdentityOrigin.EXPLICIT,
             )
             addEdge(edges, ArchitectureEdgeKind.DEFINES, artifactId, flowId, ArchitectureProvenanceKind.ARTIFACT)
 
@@ -115,7 +116,8 @@ internal class ZflGraphArtifactAnalyzer : ManifestGraphArtifactAnalyzer {
                         "isStart" to event.isStart.toString(),
                         "isError" to event.isError.toString(),
                     ),
-                    source = event.sourceRef.toArchitectureSource(context),
+                    source = event.sourceRef.toArchitectureSource(context, "$flowPath.events.${event.name}"),
+                    identityOrigin = ArchitectureIdentityOrigin.EXPLICIT,
                 )
                 addEdge(edges, ArchitectureEdgeKind.CONTAINS, flowId, eventId, ArchitectureProvenanceKind.ARTIFACT)
                 event.system?.let(systemArtifacts::get)?.let { zdlArtifact ->
@@ -123,7 +125,8 @@ internal class ZflGraphArtifactAnalyzer : ManifestGraphArtifactAnalyzer {
                         artifactNodeId(zdlArtifact), ArchitectureNodeKind.ZDL_EVENT, "events.${event.name}",
                     )
                     addEdge(edges, ArchitectureEdgeKind.RESOLVES_TO, eventId, targetId,
-                        ArchitectureProvenanceKind.INFERRED, source = event.sourceRef.toArchitectureSource(context))
+                        ArchitectureProvenanceKind.INFERRED, source = event.sourceRef.toArchitectureSource(context),
+                        confidence = ArchitectureConfidence.RESOLVED)
                 }
             }
 
@@ -139,7 +142,8 @@ internal class ZflGraphArtifactAnalyzer : ManifestGraphArtifactAnalyzer {
                         ownerId = flowId,
                         description = start.description,
                         attributes = attributes("system" to start.system, "isStart" to "true", "isError" to "false"),
-                        source = start.sourceRef.toArchitectureSource(context),
+                        source = start.sourceRef.toArchitectureSource(context, "$flowPath.starts.${start.name}"),
+                        identityOrigin = ArchitectureIdentityOrigin.EXPLICIT,
                     )
                     addEdge(edges, ArchitectureEdgeKind.CONTAINS, flowId, eventId, ArchitectureProvenanceKind.ARTIFACT)
                 }
@@ -171,7 +175,8 @@ internal class ZflGraphArtifactAnalyzer : ManifestGraphArtifactAnalyzer {
                     attributes = attributes(
                         "system" to command.system, "service" to command.service, "servicePath" to command.servicePath,
                     ),
-                    source = command.sourceRef.toArchitectureSource(context),
+                    source = command.sourceRef.toArchitectureSource(context, "$flowPath.commands.${command.name}"),
+                    identityOrigin = ArchitectureIdentityOrigin.EXPLICIT,
                 )
                 addEdge(edges, ArchitectureEdgeKind.CONTAINS, flowId, operationId, ArchitectureProvenanceKind.ARTIFACT)
 
@@ -273,7 +278,7 @@ internal class ZflGraphArtifactAnalyzer : ManifestGraphArtifactAnalyzer {
                                 if (targetId == null) {
                                     diagnostics += ArchitectureDiagnostic(
                                         message = "ZFL operation '${command.name}' calls unknown operation '${step.action}'",
-                                        severity = ArchitectureDiagnosticSeverity.WARNING,
+                                        severity = ArchitectureDiagnosticSeverity.ERROR,
                                         code = "unresolved-zfl-operation",
                                         source = occurrence.sourceRef.toArchitectureSource(context),
                                     )
@@ -349,7 +354,8 @@ internal class ZflGraphArtifactAnalyzer : ManifestGraphArtifactAnalyzer {
                             zdlArtifact.ownerRef, zdlArtifact.artifactId, serviceName, command.name,
                         )
                         addEdge(edges, ArchitectureEdgeKind.RESOLVES_TO, operationId, targetId,
-                            ArchitectureProvenanceKind.INFERRED, source = command.sourceRef.toArchitectureSource(context))
+                            ArchitectureProvenanceKind.INFERRED, source = command.sourceRef.toArchitectureSource(context),
+                            confidence = ArchitectureConfidence.RESOLVED)
                     }
                 }
             }
@@ -378,11 +384,14 @@ internal class ZflGraphArtifactAnalyzer : ManifestGraphArtifactAnalyzer {
     }
 }
 
-private fun SourceRef.toArchitectureSource(context: ManifestGraphArtifactContext): ArchitectureSource = ArchitectureSource(
+private fun SourceRef.toArchitectureSource(
+    context: ManifestGraphArtifactContext,
+    semanticPath: String? = null,
+): ArchitectureSource = ArchitectureSource(
     uri = context.sourceUri,
     artifactOwnerRef = context.artifact.ownerRef,
     artifactId = context.artifact.artifactId,
-    semanticPath = file,
+    semanticPath = semanticPath,
     line = line,
     column = column,
 )

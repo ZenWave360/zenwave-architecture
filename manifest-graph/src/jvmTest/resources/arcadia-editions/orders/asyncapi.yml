@@ -1,0 +1,5 @@
+asyncapi: 3.0.0
+channels:
+  order-placed-event-v1: { address: orders.placed }
+operations:
+  publishOrderPlaced: { action: send, channel: { $ref: '#/channels/order-placed-event-v1' } }

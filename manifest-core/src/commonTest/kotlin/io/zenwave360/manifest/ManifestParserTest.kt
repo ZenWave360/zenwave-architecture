@@ -8,6 +8,30 @@ import kotlin.test.assertTrue
 
 class ManifestParserTest {
     @Test
+    fun parsesSemanticAliasesAtEveryArchitecturalLevel() = runTest {
+        val manifest = parse(
+            """
+            domains:
+              sales:
+                aliases: [commerce]
+                subdomains:
+                  ordering:
+                    aliases: [orders]
+                    services:
+                      checkout:
+                        aliases: [orders-service, zw:legacy/orders/checkout]
+            """,
+        )
+
+        val domain = manifest.domains.single()
+        val subdomain = domain.subdomains.single()
+        val service = subdomain.services.single()
+        assertEquals(listOf("commerce"), domain.aliases)
+        assertEquals(listOf("orders"), subdomain.aliases)
+        assertEquals(listOf("orders-service", "zw:legacy/orders/checkout"), service.aliases)
+    }
+
+    @Test
     fun resolvesHierarchyIdsFromExplicitValuesOrYamlKeys() = runTest {
         val manifest = parse(
             """

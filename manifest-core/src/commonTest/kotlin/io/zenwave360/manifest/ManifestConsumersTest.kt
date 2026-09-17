@@ -53,7 +53,7 @@ class ManifestConsumersTest {
         assertTrue(unresolved.diagnostics.any { it.code == "unresolved-consumer-reference" })
         val index = ManifestConsumerIndex.build(unresolved)
         assertTrue(index.edges.isEmpty())
-        assertTrue(index.diagnostics.any { it.code == "unresolved-consumer-reference" })
+        assertTrue(index.diagnostics.any { it.code == "consumer-index-invalid-manifest" })
     }
 
     @Test

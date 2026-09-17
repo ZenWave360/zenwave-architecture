@@ -24,3 +24,15 @@ data class ManifestGraphContribution(
     val edges: List<ArchitectureEdge> = emptyList(),
     val diagnostics: List<ArchitectureDiagnostic> = emptyList(),
 )
+
+/** Adds relationships after all artifact indexes and the canonical concept layer are available. */
+interface RelationshipResolver {
+    val maxConfidence: ArchitectureConfidence
+
+    suspend fun resolve(context: RelationshipResolverContext): ManifestGraphContribution
+}
+
+data class RelationshipResolverContext(
+    val manifest: ZenWaveManifest,
+    val graph: ArchitectureGraph,
+)

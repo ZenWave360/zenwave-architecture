@@ -11,6 +11,203 @@ import kotlin.test.assertTrue
 
 class ArchitectureGraphBuilderTest {
     @Test
+    fun conceptIdentitySurvivesArtifactFileMoves() = runTest {
+        suspend fun eventId(path: String): String {
+            val uri = "file:///workspace/orders/$path"
+            val loader = ZenWaveManifestLoader(
+                listOf(MapDocumentLoader(mapOf(uri to "event OrderPlaced { id String required }"))),
+                archiveEntryLoader = null,
+            )
+            val manifest = loader.parse(
+                "file:///workspace/zenwave.yml",
+                """
+                config:
+                  sources:
+                    workspace:
+                      basePathExpression: "${'$'}{owner.repository}"
+                domains:
+                  sales:
+                    subdomains:
+                      ordering:
+                        services:
+                          order-service:
+                            repository: orders
+                            artifacts:
+                              - { type: zdl, path: $path, version: 1.0.0 }
+                """.trimIndent(),
+            )
+            return ArchitectureGraphBuilder(loader).build(manifest).graph.nodes.single {
+                it.kind == ArchitectureNodeKind.EVENT && it.label == "OrderPlaced"
+            }.id
+        }
+
+        assertEquals(
+            "zw:sales/ordering/order-service/event/OrderPlaced",
+            eventId("model/orders.zdl"),
+        )
+        assertEquals(eventId("model/orders.zdl"), eventId("contracts/domain.zdl"))
+    }
+
+    @Test
+    fun indexesApiOnlyWorkspaceWithoutConsumptionAnalysis() = runTest {
+        val resources = mapOf(
+            "file:///workspace/orders/openapi.yml" to """
+                openapi: 3.1.0
+                paths:
+                  /orders:
+                    get:
+                      operationId: listOrders
+            """.trimIndent(),
+            "file:///workspace/orders/asyncapi.yml" to """
+                asyncapi: 3.0.0
+                channels:
+                  order-placed:
+                    address: orders.placed
+                operations:
+                  publishOrderPlaced:
+                    action: send
+                    channel: { ${'$'}ref: '#/channels/order-placed' }
+            """.trimIndent(),
+        )
+        val loader = ZenWaveManifestLoader(listOf(MapDocumentLoader(resources)), archiveEntryLoader = null)
+        val manifest = loader.parse(
+            "file:///workspace/zenwave.yml",
+            """
+            config:
+              sources:
+                workspace:
+                  basePathExpression: "${'$'}{owner.repository}"
+            domains:
+              sales:
+                services:
+                  orders:
+                    repository: orders
+                    artifacts:
+                      - { artifactId: orders-http, type: openapi, path: openapi.yml, version: 1.0.0 }
+                      - { artifactId: orders-events, type: asyncapi, path: asyncapi.yml, version: 1.0.0 }
+            """.trimIndent(),
+        )
+
+        val graph = ArchitectureGraphBuilder(loader, emptyList()).build(
+            manifest,
+            ArchitectureGraphBuildOptions(includeApiConsumptions = false),
+        ).graph
+
+        assertTrue(graph.nodes.any { it.kind == ArchitectureNodeKind.API_OPERATION && it.label == "listOrders" })
+        assertTrue(graph.nodes.any { it.kind == ArchitectureNodeKind.CHANNEL && it.attributes["address"] == "orders.placed" })
+    }
+
+    @Test
+    fun missingLocalArtifactIsAnErrorKeyedToTheArtifact() = runTest {
+        val loader = ZenWaveManifestLoader(emptyList(), archiveEntryLoader = null)
+        val manifest = loader.parse("file:///workspace/zenwave.yml", """
+            config:
+              sources:
+                workspace:
+                  basePathExpression: "${'$'}{owner.repository}"
+            domains:
+              sales:
+                services:
+                  orders:
+                    repository: orders
+                    artifacts:
+                      - { artifactId: missing, type: zdl, path: missing.zdl, version: 1.0.0 }
+        """.trimIndent())
+
+        val result = ArchitectureGraphBuilder(loader).build(manifest)
+        val artifact = result.graph.nodes.single { it.kind == ArchitectureNodeKind.ARTIFACT }
+        val diagnostic = result.diagnostics.single { it.code == "artifact-load-failed" }
+
+        assertEquals(ArchitectureDiagnosticSeverity.ERROR, diagnostic.severity)
+        assertEquals(artifact.id, diagnostic.semanticId)
+    }
+
+    @Test
+    fun clampsRelationshipResolverConfidenceToItsDeclaredMaximum() = runTest {
+        val loader = ZenWaveManifestLoader(emptyList(), archiveEntryLoader = null)
+        val manifest = loader.parse(
+            "file:///workspace/zenwave.yml",
+            """
+            domains:
+              sales:
+                services:
+                  orders: {}
+                  payments: {}
+            """.trimIndent(),
+        )
+        val resolver = object : RelationshipResolver {
+            override val maxConfidence = ArchitectureConfidence.INFERRED_HEURISTIC
+            override suspend fun resolve(context: RelationshipResolverContext): ManifestGraphContribution {
+                val services = context.graph.nodes.filter { it.kind == ArchitectureNodeKind.SERVICE }
+                val capabilityId = ArchitectureGraphIds.concept(services[0].id, ArchitectureNodeKind.CAPABILITY, "Checkout")
+                return ManifestGraphContribution(
+                    nodes = listOf(ArchitectureNode(
+                        capabilityId,
+                        ArchitectureNodeKind.CAPABILITY,
+                        "Checkout",
+                        services[0].id,
+                        evidence = listOf(ArchitectureEvidence(
+                            "java", ArchitectureSource("file:///workspace/Checkout.java"), ArchitectureConfidence.DECLARED,
+                        )),
+                    )),
+                    edges = listOf(ArchitectureEdge(
+                    id = ArchitectureGraphIds.edge(ArchitectureEdgeKind.DEPENDS_ON, services[0].id, services[1].id),
+                    kind = ArchitectureEdgeKind.DEPENDS_ON,
+                    source = services[0].id,
+                    target = services[1].id,
+                    confidence = ArchitectureConfidence.DECLARED,
+                )))
+            }
+        }
+
+        val result = ArchitectureGraphBuilder(loader, emptyList(), listOf(resolver)).build(manifest)
+
+        assertEquals(ArchitectureConfidence.INFERRED_HEURISTIC, result.graph.edges(ArchitectureEdgeKind.DEPENDS_ON).single().confidence)
+        assertEquals(
+            ArchitectureConfidence.INFERRED_HEURISTIC,
+            result.graph.nodes.single { it.kind == ArchitectureNodeKind.CAPABILITY }.evidence.single().confidence,
+        )
+        assertTrue(result.diagnostics.any { it.code == "resolver-confidence-exceeded" })
+    }
+
+    @Test
+    fun mergesIndependentEvidenceForTheSameRelationship() = runTest {
+        val loader = ZenWaveManifestLoader(emptyList(), archiveEntryLoader = null)
+        val manifest = loader.parse("file:///workspace/zenwave.yml", """
+            domains:
+              sales:
+                services:
+                  orders: {}
+                  payments: {}
+        """.trimIndent())
+        fun resolver(confidence: ArchitectureConfidence, uri: String) = object : RelationshipResolver {
+            override val maxConfidence = confidence
+            override suspend fun resolve(context: RelationshipResolverContext): ManifestGraphContribution {
+                val services = context.graph.nodes.filter { it.kind == ArchitectureNodeKind.SERVICE }.sortedBy { it.id }
+                val edge = ArchitectureEdge(
+                    id = ArchitectureGraphIds.edge(ArchitectureEdgeKind.DEPENDS_ON, services[0].id, services[1].id),
+                    kind = ArchitectureEdgeKind.DEPENDS_ON,
+                    source = services[0].id,
+                    target = services[1].id,
+                    confidence = confidence,
+                    evidence = listOf(ArchitectureEvidence("java", ArchitectureSource(uri), confidence, "resolver evidence")),
+                )
+                return ManifestGraphContribution(edges = listOf(edge))
+            }
+        }
+
+        val result = ArchitectureGraphBuilder(loader, emptyList(), listOf(
+            resolver(ArchitectureConfidence.INFERRED_HEURISTIC, "file:///workspace/a.java"),
+            resolver(ArchitectureConfidence.RESOLVED, "file:///workspace/b.java"),
+        )).build(manifest)
+
+        val edge = result.graph.edges(ArchitectureEdgeKind.DEPENDS_ON).single()
+        assertEquals(ArchitectureConfidence.RESOLVED, edge.confidence)
+        assertEquals(2, edge.evidence.size)
+        assertFalse(result.diagnostics.any { it.code == "duplicate-graph-edge" })
+    }
+
+    @Test
     fun buildsManifestZdlZflAndConsumerGraph() = runTest {
         val resources = mapOf(
             "file:///workspace/orders/model.zdl" to ZDL,

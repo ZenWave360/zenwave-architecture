@@ -8,14 +8,19 @@ import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmStatic
 
 enum class ArchitectureNodeKind {
-    DOMAIN, SUBDOMAIN, SERVICE, ARTIFACT,
+    WORKSPACE, DOMAIN, SUBDOMAIN, SERVICE,
+    AGGREGATE, ENTITY, COMMAND, EVENT, POLICY, FLOW, STEP, CAPABILITY,
+    ARTIFACT,
     ZDL_API, ZDL_SERVICE, ZDL_METHOD, ZDL_EVENT,
     ZFL_SYSTEM, ZFL_FLOW, ZFL_OPERATION, ZFL_STEP, ZFL_EVENT, ZFL_OUTCOME,
     ZDL_ENTITY, API_OPERATION, CHANNEL, MESSAGE,
 }
 
 enum class ArchitectureEdgeKind {
-    CONTAINS, DECLARES_ARTIFACT, DECLARES_DOMAIN, DEFINES,
+    OWNS, CONTAINS, REFERENCES, REPRESENTS,
+    PUBLISHES, SUBSCRIBES, CALLS, IMPLEMENTS, IMPLEMENTED_BY, HANDLES,
+    USES_SCHEMA, TRANSPORTED_BY, DEPENDS_ON,
+    DECLARES_ARTIFACT, DECLARES_DOMAIN, DEFINES,
     INVOKES, EMITS, CONSUMES, REFERENCES_API, TRIGGERS,
     OCCURRENCE_OF, RESOLVES_TO, BINDS_TO, RESPONDS, COMPENSATES, RESULTS_IN,
 }
@@ -112,9 +117,20 @@ data class ArchitectureOperationBinding(
 
 enum class ArchitectureProvenanceKind { MANIFEST, ARTIFACT, DECLARED_CONSUMER, INFERRED }
 
+enum class ArchitectureConfidence { DECLARED, RESOLVED, INFERRED_EXACT, INFERRED_HEURISTIC }
+
+fun ArchitectureProvenanceKind.defaultConfidence(): ArchitectureConfidence = when (this) {
+    ArchitectureProvenanceKind.MANIFEST,
+    ArchitectureProvenanceKind.ARTIFACT,
+    ArchitectureProvenanceKind.DECLARED_CONSUMER -> ArchitectureConfidence.DECLARED
+    ArchitectureProvenanceKind.INFERRED -> ArchitectureConfidence.INFERRED_EXACT
+}
+
 enum class ArchitectureDiagnosticSeverity { INFO, WARNING, ERROR }
 
 enum class ArchitectureTraversalDirection { OUTGOING, INCOMING, BOTH }
+
+enum class ArchitectureIdentityOrigin { EXPLICIT, DERIVED }
 
 data class ArchitectureSource(
     val uri: String,
@@ -125,6 +141,13 @@ data class ArchitectureSource(
     val column: Int? = null,
 )
 
+data class ArchitectureEvidence(
+    val kind: String,
+    val source: ArchitectureSource,
+    val confidence: ArchitectureConfidence,
+    val explanation: String? = null,
+)
+
 data class ArchitectureNode(
     val id: String,
     val kind: ArchitectureNodeKind,
@@ -133,6 +156,10 @@ data class ArchitectureNode(
     val description: String? = null,
     val attributes: Map<String, String> = emptyMap(),
     val source: ArchitectureSource? = null,
+    val identityOrigin: ArchitectureIdentityOrigin = ArchitectureIdentityOrigin.DERIVED,
+    val evidence: List<ArchitectureEvidence> = source?.let {
+        listOf(ArchitectureEvidence(evidenceKind(kind, attributes), it, ArchitectureConfidence.DECLARED))
+    }.orEmpty(),
 )
 
 data class ArchitectureEdge(
@@ -144,6 +171,10 @@ data class ArchitectureEdge(
     val attributes: Map<String, String> = emptyMap(),
     val provenance: ArchitectureProvenanceKind = ArchitectureProvenanceKind.INFERRED,
     val sourceInfo: ArchitectureSource? = null,
+    val confidence: ArchitectureConfidence = provenance.defaultConfidence(),
+    val evidence: List<ArchitectureEvidence> = sourceInfo?.let {
+        listOf(ArchitectureEvidence(provenance.name.lowercase().replace('_', '-'), it, confidence))
+    }.orEmpty(),
 )
 
 data class ArchitectureDiagnostic(
@@ -151,6 +182,23 @@ data class ArchitectureDiagnostic(
     val severity: ArchitectureDiagnosticSeverity,
     val code: String,
     val source: ArchitectureSource? = null,
+    val semanticId: String? = null,
+)
+
+private fun evidenceKind(kind: ArchitectureNodeKind, attributes: Map<String, String>): String = when (kind) {
+    ArchitectureNodeKind.ZDL_API, ArchitectureNodeKind.ZDL_SERVICE, ArchitectureNodeKind.ZDL_METHOD,
+    ArchitectureNodeKind.ZDL_EVENT, ArchitectureNodeKind.ZDL_ENTITY -> "zdl"
+    ArchitectureNodeKind.ZFL_SYSTEM, ArchitectureNodeKind.ZFL_FLOW, ArchitectureNodeKind.ZFL_OPERATION,
+    ArchitectureNodeKind.ZFL_STEP, ArchitectureNodeKind.ZFL_EVENT, ArchitectureNodeKind.ZFL_OUTCOME -> "zfl"
+    ArchitectureNodeKind.CHANNEL, ArchitectureNodeKind.MESSAGE -> "asyncapi"
+    ArchitectureNodeKind.API_OPERATION -> if (attributes.containsKey("method")) "openapi" else "asyncapi"
+    ArchitectureNodeKind.ARTIFACT -> attributes["type"] ?: "manifest"
+    else -> "manifest"
+}
+
+data class ArchitectureTraversalResult(
+    val graph: ArchitectureGraph,
+    val truncated: Boolean,
 )
 
 data class ArchitectureGraphResult(
@@ -161,6 +209,8 @@ data class ArchitectureGraphResult(
 data class ArchitectureGraph(
     val nodes: List<ArchitectureNode>,
     val edges: List<ArchitectureEdge>,
+    /** Historical semantic-ID prefixes mapped to their current canonical prefixes. */
+    val aliases: Map<String, String> = emptyMap(),
 ) {
     val nodesById: Map<String, ArchitectureNode> = nodes.associateBy { it.id }
     private val outgoingById: Map<String, List<ArchitectureEdge>> = edges.groupBy { it.source }
@@ -169,6 +219,22 @@ data class ArchitectureGraph(
 
     fun node(id: String): ArchitectureNode? = nodesById[id]
 
+    /** Resolves canonical IDs and aliases without falling back to fuzzy matching. */
+    fun resolve(id: SemanticId): SemanticResolutionResult {
+        val lookupValue = id.value.removeVersionCoordinate()
+        nodesById[lookupValue]?.let { return SemanticResolutionResult.Resolved(it) }
+        val redirect = aliases.entries
+            .filter { (alias, _) -> lookupValue == alias || lookupValue.startsWith("$alias/") }
+            .maxByOrNull { it.key.length }
+        if (redirect != null) {
+            val canonical = redirect.value + lookupValue.removePrefix(redirect.key)
+            nodesById[canonical]?.let {
+                return SemanticResolutionResult.Resolved(it, redirectedFrom = id)
+            }
+        }
+        return SemanticResolutionResult.NotFound(closestCandidates(id.value))
+    }
+
     fun outgoing(id: String, kind: ArchitectureEdgeKind? = null): List<ArchitectureEdge> =
         outgoingById[id].orEmpty().filter { kind == null || it.kind == kind }
 
@@ -176,6 +242,64 @@ data class ArchitectureGraph(
         incomingById[id].orEmpty().filter { kind == null || it.kind == kind }
 
     fun edges(kind: ArchitectureEdgeKind): List<ArchitectureEdge> = edgesByKind[kind].orEmpty()
+
+    @JvmOverloads
+    fun related(
+        rootId: String,
+        direction: ArchitectureTraversalDirection = ArchitectureTraversalDirection.BOTH,
+        kinds: Set<ArchitectureEdgeKind> = emptySet(),
+        confidence: Set<ArchitectureConfidence> = emptySet(),
+        origins: Set<ArchitectureIdentityOrigin> = emptySet(),
+        maxDepth: Int = 1,
+        maxNodes: Int = 100,
+    ): ArchitectureTraversalResult {
+        val root = nodesById[rootId]
+            ?: return ArchitectureTraversalResult(ArchitectureGraph(emptyList(), emptyList(), aliases), false)
+        val depthLimit = maxDepth.coerceAtLeast(0)
+        val nodeLimit = maxNodes.coerceAtLeast(1)
+        val visited = linkedSetOf(root.id)
+        val selectedEdges = linkedMapOf<String, ArchitectureEdge>()
+        val queue = ArrayDeque<Pair<String, Int>>()
+        queue += root.id to 0
+        var truncated = false
+
+        fun adjacentEdges(nodeId: String): List<ArchitectureEdge> = when (direction) {
+            ArchitectureTraversalDirection.OUTGOING -> outgoingById[nodeId].orEmpty()
+            ArchitectureTraversalDirection.INCOMING -> incomingById[nodeId].orEmpty()
+            ArchitectureTraversalDirection.BOTH -> outgoingById[nodeId].orEmpty() + incomingById[nodeId].orEmpty()
+        }.filter { edge ->
+            (kinds.isEmpty() || edge.kind in kinds) &&
+                (confidence.isEmpty() || edge.confidence in confidence)
+        }.distinctBy { it.id }
+
+        while (queue.isNotEmpty()) {
+            val (nodeId, depth) = queue.removeFirst()
+            val candidates = adjacentEdges(nodeId)
+            if (depth >= depthLimit) {
+                if (candidates.any { edge ->
+                        val adjacent = if (edge.source == nodeId) edge.target else edge.source
+                        adjacent in nodesById && adjacent !in visited &&
+                            (origins.isEmpty() || nodesById.getValue(adjacent).identityOrigin in origins)
+                    }) truncated = true
+                continue
+            }
+            candidates.forEach { edge ->
+                val adjacent = if (edge.source == nodeId) edge.target else edge.source
+                val adjacentNode = nodesById[adjacent] ?: return@forEach
+                if (origins.isNotEmpty() && adjacentNode.identityOrigin !in origins) return@forEach
+                if (adjacent !in visited && visited.size >= nodeLimit) {
+                    truncated = true
+                    return@forEach
+                }
+                selectedEdges[edge.id] = edge
+                if (visited.add(adjacent)) queue += adjacent to depth + 1
+            }
+        }
+        return ArchitectureTraversalResult(
+            ArchitectureGraph(visited.mapNotNull(nodesById::get), selectedEdges.values.toList(), aliases),
+            truncated,
+        )
+    }
 
     fun resolvedMethod(zflOperationId: String): ArchitectureNode? =
         outgoing(zflOperationId, ArchitectureEdgeKind.RESOLVES_TO)
@@ -232,27 +356,20 @@ data class ArchitectureGraph(
         kinds: Set<ArchitectureEdgeKind> = emptySet(),
         maxDepth: Int = Int.MAX_VALUE,
     ): ArchitectureGraph {
-        val root = nodesById[rootId] ?: return ArchitectureGraph(emptyList(), emptyList())
-        val depthLimit = maxDepth.coerceAtLeast(0)
-        val visited = linkedSetOf(root.id)
-        val selectedEdges = linkedMapOf<String, ArchitectureEdge>()
-        val queue = ArrayDeque<Pair<String, Int>>()
-        queue.add(root.id to 0)
-        while (queue.isNotEmpty()) {
-            val (nodeId, depth) = queue.removeFirst()
-            if (depth >= depthLimit) continue
-            val candidates = when (direction) {
-                ArchitectureTraversalDirection.OUTGOING -> outgoingById[nodeId].orEmpty()
-                ArchitectureTraversalDirection.INCOMING -> incomingById[nodeId].orEmpty()
-                ArchitectureTraversalDirection.BOTH -> outgoingById[nodeId].orEmpty() + incomingById[nodeId].orEmpty()
-            }.filter { kinds.isEmpty() || it.kind in kinds }
-            candidates.forEach { edge ->
-                selectedEdges[edge.id] = edge
-                val adjacent = if (edge.source == nodeId) edge.target else edge.source
-                if (adjacent in nodesById && visited.add(adjacent)) queue.add(adjacent to depth + 1)
-            }
-        }
-        return ArchitectureGraph(visited.mapNotNull(nodesById::get), selectedEdges.values.toList())
+        return related(rootId, direction, kinds, maxDepth = maxDepth, maxNodes = Int.MAX_VALUE).graph
+    }
+
+    private fun closestCandidates(value: String): List<ArchitectureNode> {
+        val query = value.substringAfterLast('/').substringAfterLast(':').lowercase()
+        if (query.isBlank()) return emptyList()
+        val maximumDistance = maxOf(2, query.length / 3)
+        return nodes.asSequence()
+            .map { node -> node to minOf(editDistance(query, node.label.lowercase()), editDistance(query, node.id.substringAfterLast('/').lowercase())) }
+            .filter { (_, distance) -> distance <= maximumDistance }
+            .sortedWith(compareBy<Pair<ArchitectureNode, Int>>({ it.second }, { it.first.id }))
+            .take(5)
+            .map { it.first }
+            .toList()
     }
 
     companion object {
@@ -281,26 +398,33 @@ data class ArchitectureGraphBuildOptions(
 /** Stable, URI-safe identifiers shared by built-in and third-party graph analyzers. */
 object ArchitectureGraphIds {
     @JvmStatic
-    fun domain(domainKey: String): String = "domain/${segment(domainKey)}"
+    fun domain(domainKey: String): String = "zw:${canonicalStructuralSegment(domainKey)}"
 
     @JvmStatic
     fun subdomain(domainKey: String, subdomainKey: String): String =
-        "${domain(domainKey)}/subdomain/${segment(subdomainKey)}"
+        "${domain(domainKey)}/${canonicalStructuralSegment(subdomainKey)}"
 
     @JvmStatic
-    fun service(serviceRef: String): String = "service/${segment(serviceRef)}"
+    fun service(serviceRef: String): String =
+        "zw:" + serviceRef.split('/').joinToString("/") { canonicalStructuralSegment(it) }
 
     @JvmStatic
     fun artifact(ownerRef: String, artifactId: String): String =
-        "artifact/${segment(ownerRef)}/${segment(artifactId)}"
+        "${service(ownerRef)}/artifact/${segment(artifactId)}"
+
+    @JvmStatic
+    fun concept(ownerId: String, kind: ArchitectureNodeKind, name: String): String {
+        require(kind in conceptKinds) { "'$kind' is not a concept kind" }
+        return "$ownerId/${kind.name.lowercase().replace('_', '-')}/${segment(name)}"
+    }
 
     @JvmStatic
     fun channel(ownerRef: String, artifactId: String, channelKey: String): String =
-        semantic(artifact(ownerRef, artifactId), ArchitectureNodeKind.CHANNEL, "channels.$channelKey")
+        "${service(ownerRef)}/channel/${segment(channelKey)}"
 
     @JvmStatic
     fun apiOperation(ownerRef: String, artifactId: String, operationId: String): String =
-        semantic(artifact(ownerRef, artifactId), ArchitectureNodeKind.API_OPERATION, "operations.$operationId")
+        "${service(ownerRef)}/api-operation/${segment(operationId)}"
 
     @JvmStatic
     fun zdlMethod(ownerRef: String, artifactId: String, serviceName: String, methodName: String): String =
@@ -309,7 +433,7 @@ object ArchitectureGraphIds {
 
     @JvmStatic
     fun semantic(artifactId: String, kind: ArchitectureNodeKind, path: String): String =
-        "$artifactId/${kind.name.lowercase()}/${segment(path)}"
+        "$artifactId/${kind.name.lowercase().replace('_', '-')}/${segment(path)}"
 
     @JvmStatic
     fun edge(kind: ArchitectureEdgeKind, source: String, target: String, discriminator: String = ""): String =
@@ -317,14 +441,52 @@ object ArchitectureGraphIds {
             discriminator.takeIf { it.isNotBlank() }?.let { "/${segment(it)}" }.orEmpty()
 
     private fun segment(value: String): String = buildString {
-        value.forEach { character ->
-            when {
-                character.isLetterOrDigit() || character in "-._~" -> append(character)
-                else -> {
-                    append('%')
-                    append(character.code.toString(16).uppercase().padStart(4, '0'))
-                }
-            }
+        value.encodeToByteArray().forEach { raw ->
+            val byte = raw.toInt() and 0xff
+            val character = byte.toChar()
+            if (character.isLetterOrDigit() && byte < 128 || character in "-._~") append(character)
+            else append('%').append(byte.toString(16).uppercase().padStart(2, '0'))
         }
     }
+
+}
+
+internal fun canonicalStructuralSegment(value: String): String = value
+    .trim()
+    .lowercase()
+    .replace(Regex("[^a-z0-9]+"), "-")
+    .trim('-')
+    .ifEmpty { "unnamed" }
+
+internal val conceptKinds = setOf(
+    ArchitectureNodeKind.WORKSPACE, ArchitectureNodeKind.DOMAIN, ArchitectureNodeKind.SUBDOMAIN,
+    ArchitectureNodeKind.SERVICE, ArchitectureNodeKind.AGGREGATE, ArchitectureNodeKind.ENTITY,
+    ArchitectureNodeKind.COMMAND, ArchitectureNodeKind.EVENT, ArchitectureNodeKind.POLICY,
+    ArchitectureNodeKind.FLOW, ArchitectureNodeKind.STEP, ArchitectureNodeKind.CAPABILITY,
+)
+
+private fun editDistance(left: String, right: String): Int {
+    if (left.isEmpty()) return right.length
+    if (right.isEmpty()) return left.length
+    var previous = IntArray(right.length + 1) { it }
+    left.forEachIndexed { leftIndex, leftChar ->
+        val current = IntArray(right.length + 1)
+        current[0] = leftIndex + 1
+        right.forEachIndexed { rightIndex, rightChar ->
+            current[rightIndex + 1] = minOf(
+                current[rightIndex] + 1,
+                previous[rightIndex + 1] + 1,
+                previous[rightIndex] + if (leftChar == rightChar) 0 else 1,
+            )
+        }
+        previous = current
+    }
+    return previous[right.length]
+}
+
+private fun String.removeVersionCoordinate(): String {
+    if ("/artifact/" !in this) return this
+    val at = lastIndexOf('@')
+    val slash = lastIndexOf('/')
+    return if (at > slash && at > indexOf(':')) substring(0, at) else this
 }

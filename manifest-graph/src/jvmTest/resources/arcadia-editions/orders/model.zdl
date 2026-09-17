@@ -1,0 +1,9 @@
+apis {
+    asyncapi provider OrdersApi "orders/asyncapi.yml"
+}
+@aggregate entity Order { id String required }
+service OrdersService for (Order) {
+    @asyncapi({api: OrdersApi, channel: "order-placed-event-v1"})
+    placeOrder(id) withEvents OrderPlaced
+}
+event OrderPlaced { id String required }

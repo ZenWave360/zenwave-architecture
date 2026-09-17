@@ -77,7 +77,7 @@ internal class ZdlGraphArtifactAnalyzer : ManifestGraphArtifactAnalyzer {
                 } else {
                     diagnostics += ArchitectureDiagnostic(
                         message = "ZDL API '$name' references unresolved artifact '$uri'",
-                        severity = ArchitectureDiagnosticSeverity.WARNING,
+                        severity = ArchitectureDiagnosticSeverity.ERROR,
                         code = "unresolved-api-reference",
                         source = source(context, path, model.getLocations()[path]),
                     )

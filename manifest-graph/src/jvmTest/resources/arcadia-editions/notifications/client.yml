@@ -1,0 +1,6 @@
+asyncapi: 3.0.0
+channels:
+  order-placed:
+    $ref: '../orders/asyncapi.yml#/channels/order-placed-event-v1'
+operations:
+  onOrderPlaced: { action: receive, channel: { $ref: '#/channels/order-placed' } }

@@ -21,6 +21,7 @@ internal fun semanticNode(
     ownerId = ownerId,
     attributes = attributes,
     source = source(context, path, locations[path]),
+    identityOrigin = ArchitectureIdentityOrigin.EXPLICIT,
 )
 
 internal fun source(context: ManifestGraphArtifactContext, path: String?, location: Any?): ArchitectureSource {
