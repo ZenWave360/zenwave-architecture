@@ -25,4 +25,4 @@ if (localDslKotlin.exists()) {
     }
 }
 
-include("manifest-core", "manifest-graph", "workspace-runtime")
+include("manifest-core", "manifest-graph", "workspace-runtime", "workspace-mcp")
