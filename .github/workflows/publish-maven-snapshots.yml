@@ -4,6 +4,12 @@ on:
   push:
     branches: [develop, next]
   workflow_dispatch:
+    inputs:
+      publishNpm:
+        description: "Publish all four npm packages to next (disable to download tarballs only)"
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -19,11 +25,19 @@ jobs:
     with:
       java-version: "21"
       kover-xml-files: "./manifest-core/build/reports/kover/report.xml"
-      publish-npm: true
-      npm-package: "@zenwave360/manifest-core"
-      npm-package-dir: build/js/packages/zenwave-manifest-manifest-core
+      publish-npm: false
     secrets:
       CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
       CENTRAL_TOKEN: ${{ secrets.CENTRAL_TOKEN }}
       SIGN_KEY: ${{ secrets.SIGN_KEY }}
       SIGN_KEY_PASS: ${{ secrets.SIGN_KEY_PASS }}
+
+  npm-packages:
+    needs: publish-snapshot
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/next'
+    uses: ./.github/workflows/npm-packages.yml
+    with:
+      ref: ${{ github.sha }}
+      snapshot: true
+      publish: ${{ github.event_name == 'push' || inputs.publishNpm }}
+      environment: npm-snapshots

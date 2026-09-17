@@ -1,0 +1,147 @@
+name: Build and publish npm packages
+
+on:
+  # Bootstrap: generate downloadable tarballs without publishing anything.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "npm bootstrap version on the current Maven snapshot train"
+        required: true
+        type: string
+        default: "1.0.0-next.0"
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      version:
+        required: false
+        type: string
+        default: ""
+      snapshot:
+        required: false
+        type: boolean
+        default: false
+      publish:
+        required: false
+        type: boolean
+        default: false
+      environment:
+        required: false
+        type: string
+        default: "npm-publish"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, test and pack all npm packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      commit: ${{ steps.version.outputs.commit }}
+    steps:
+      - name: Checkout source or release tag
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+      - name: Set up JDK
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          java-version: "21"
+          distribution: temurin
+          cache: gradle
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+      - name: Determine shared npm version
+        id: version
+        env:
+          NPM_VERSION: ${{ inputs.version }}
+          SNAPSHOT_BUILD: ${{ inputs.snapshot && format('{0}.{1}', github.run_number, github.run_attempt) || '' }}
+        run: |
+          set -euo pipefail
+          node --test scripts/npm-packages.test.mjs
+          echo "version=$(node scripts/npm-packages.mjs version)" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Build, test and generate tarballs
+        env:
+          NPM_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon build npmPack -PuseLocalDependencies=false "-PnpmVersion=$NPM_VERSION"
+          node scripts/npm-packages.mjs verify "$NPM_VERSION"
+      - name: Install and load the generated npm packages
+        env:
+          NPM_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { packages } from './scripts/npm-packages.mjs';
+          fs.mkdirSync('build/npm-smoke', {recursive: true});
+          fs.writeFileSync('build/npm-smoke/package.json', JSON.stringify({
+            name: 'zenwave-manifest-npm-smoke', version: '0.0.0', private: true,
+            dependencies: Object.fromEntries(packages.map(name => [
+              `@zenwave360/${name}`, `file:../npm/zenwave360-${name}-${process.env.NPM_VERSION}.tgz`
+            ]))
+          }));
+          NODE
+          npm install --prefix build/npm-smoke --ignore-scripts --no-package-lock --no-audit --no-fund
+          node --input-type=module <<'NODE'
+          import { createRequire } from 'node:module';
+          import { resolve } from 'node:path';
+          import { packages } from './scripts/npm-packages.mjs';
+          const require = createRequire(resolve('build/npm-smoke/package.json'));
+          for (const name of packages) {
+            require(`@zenwave360/${name}`);
+            console.log(`@zenwave360/${name}: loaded`);
+          }
+          NODE
+      - name: Upload all four npm tarballs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: npm-packages
+          path: build/npm/*.tgz
+          if-no-files-found: error
+
+  publish:
+    name: Publish all npm packages via trusted publishing
+    needs: build
+    if: inputs.publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: npm-packages-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout the exact build commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.build.outputs.commit }}
+          persist-credentials: false
+      - name: Set up Node.js for trusted publishing
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org/
+      - name: Download verified tarballs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: npm-packages
+          path: build/npm
+      - name: Verify and publish the complete version set
+        env:
+          NPM_VERSION: ${{ needs.build.outputs.version }}
+        run: node scripts/npm-packages.mjs publish "$NPM_VERSION"
