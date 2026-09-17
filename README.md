@@ -13,6 +13,7 @@ ZenWave Manifest is the architecture contract shared by ZenWave tools. A hand-au
 - Latest schema: `https://schemas.zenwave360.io/zenwave-architecture/latest/schema.json`
 - Detailed authoring guide: [docs/source-resolution-guide.md](docs/source-resolution-guide.md)
 - Normative source-resolution specification: [docs/source-resolution-specification.md](docs/source-resolution-specification.md)
+- Workspace diagnostic codes: [docs/diagnostics.md](docs/diagnostics.md)
 
 ## Complete manifest
 
@@ -265,10 +266,11 @@ The initial built-ins contribute:
   system-to-ZDL declarations, and resolved ZFL-step-to-ZDL-method invocations;
 - cross-artifact links from ZDL methods and events to AsyncAPI channel nodes.
 
-Every node and edge has a stable string ID. Artifact-derived elements retain their resolved source
-URI, owner reference, artifact ID, semantic path, and source coordinates when the parser supplies
-them. Loading and analysis failures become diagnostics so one broken artifact does not discard the
-rest of the graph.
+Canonical concept nodes use location-independent `zw:` IDs. Artifact-derived representation nodes
+retain their resolved source URI, owner reference, artifact ID, semantic path, and source coordinates,
+and connect to concepts through `REPRESENTS` edges. Concepts and relationships aggregate typed
+evidence with confidence. Loading and analysis failures become diagnostics so one broken artifact
+does not discard the rest of the graph.
 
 JVM callers that do not use coroutines can use `BlockingArchitectureGraph.build(...)` or
 `BlockingArchitectureGraphBuilder`. Additional artifact formats remain an open namespace: provide
@@ -305,6 +307,43 @@ val bundleMembers: List<ResolvedManifestArtifact> = selection.artifacts
 Repository selectors may generally span several owners. An artifact-ID selector must resolve one
 artifact. A declared type must resolve artifacts on one owner, while `asyncapi-all` must resolve one
 matching service; missing and ambiguous selections fail with `ManifestArtifactSelectionException`.
+
+## Workspace query runtime
+
+The `workspace-runtime` Kotlin Multiplatform module exposes the adapter-neutral query contract used
+by MCP, Web, CLI, and future LSP integrations. It provides bounded overview, deterministic semantic
+ID resolution, browse, search, relationship traversal, provenance, and diagnostic operations.
+Manifest `aliases` on domains, subdomains, and services redirect historical `zw:` IDs, including
+descendant IDs after a parent rename.
+
+The exact reverse-provenance `at` query crosses from an editor's document URI and semantic path to
+the canonical architecture concept. LSP integrations use this operation for `conceptAt`; they do
+not inspect `ArchitectureGraph` or construct `zw:` IDs themselves.
+
+```kotlin
+val workspace: WorkspaceQueryApi = WorkspaceRuntime(loader).open(manifestUri)
+val service = workspace.resolve(SemanticId("zw:sales/ordering/order-service"))
+val dependencies = workspace.related(
+    SemanticId("zw:sales/ordering/order-service"),
+    direction = Direction.OUTGOING,
+    confidence = listOf("DECLARED", "RESOLVED", "INFERRED_EXACT"),
+)
+val conceptsAtCursor = workspace.at(
+    WorkspaceSourceLocation("file:///workspace/orders/model.zdl", "events.OrderPlaced"),
+)
+```
+
+The `workspace-mcp` Kotlin Multiplatform module maps the seven tools from the Workspace
+specification onto this same interface. `WorkspaceMcpTools.tools` supplies bounded JSON schemas and
+`WorkspaceMcpTools.call(...)` returns a readable summary plus structured content for direct MCP SDK
+registration.
+
+Validate a workspace before starting an adapter:
+
+```text
+./gradlew :workspace-cli:installDist
+workspace-cli/build/install/zenwave/bin/zenwave validate /workspace/zenwave-architecture.yml
+```
 
 ## Source-aware editing
 
