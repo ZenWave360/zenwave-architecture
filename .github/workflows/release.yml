@@ -14,6 +14,11 @@ on:
         required: false
         type: string
         default: ""
+      publishNpm:
+        description: "Publish @zenwave360/manifest-core to npm (requires npm-publish environment approval)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -33,7 +38,10 @@ jobs:
       development-version: ${{ inputs.developmentVersion }}
       artifact-id: manifest-core
       java-version: "21"
-      publish-npm: false
+      publish-npm: true
+      dispatch-publish-npm: ${{ inputs.publishNpm }}
+      npm-package: "@zenwave360/manifest-core"
+      npm-package-dir: build/js/packages/zenwave-manifest-manifest-core
     secrets:
       CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
       CENTRAL_TOKEN: ${{ secrets.CENTRAL_TOKEN }}

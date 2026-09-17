@@ -6,6 +6,9 @@ plugins {
     alias(libs.plugins.kotlinx.kover)
 }
 
+val npmVersion = providers.gradleProperty("npmVersion")
+    .getOrElse(version.toString().replace("-SNAPSHOT", "-next.0"))
+
 kotlin {
     jvmToolchain(17)
 
@@ -18,6 +21,22 @@ kotlin {
     js(IR) {
         nodejs()
         binaries.library()
+        compilations["main"].packageJson {
+            customField("name", "@zenwave360/manifest-core")
+            customField("version", npmVersion)
+            customField("description", "ZenWave architecture manifest parser for JavaScript/TypeScript")
+            customField("publishConfig", mapOf(
+                "access" to "public",
+                "registry" to "https://registry.npmjs.org/",
+                "tag" to if (npmVersion.contains("-")) "next" else "latest"
+            ))
+            customField("homepage", "https://github.com/ZenWave360/zenwave-manifest")
+            customField("repository", mapOf(
+                "type" to "git",
+                "url" to "https://github.com/ZenWave360/zenwave-manifest"
+            ))
+            customField("license", "MIT")
+        }
     }
 
     sourceSets {
