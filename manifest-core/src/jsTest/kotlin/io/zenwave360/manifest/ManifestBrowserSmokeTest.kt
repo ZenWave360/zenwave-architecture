@@ -21,7 +21,7 @@ class ManifestBrowserSmokeTest {
     fun archiveExtractionIsNotAvailableOnJs() {
         assertEquals(emptySet(), ManifestPlatform.capabilities())
         assertFalse(ManifestPlatform.isAvailable(ManifestPlatform.ARCHIVE_EXTRACTION))
-        assertTrue(RefParserPlatform.name == "node" || RefParserPlatform.name == "browser")
+        assertTrue(ManifestPlatform.name == "node" || ManifestPlatform.name == "browser")
     }
 
     @Test
@@ -49,7 +49,7 @@ class ManifestBrowserSmokeTest {
 
     @Test
     fun theFilesystemIsReportedAsUnavailableInABrowser() = runTest {
-        if (RefParserPlatform.name != "browser") return@runTest
+        if (ManifestPlatform.name != "browser") return@runTest
         // The default readers load; a file read is reported as unavailable rather than as a defect.
         val error = assertFailsWith<CapabilityUnavailableException> {
             ZenWaveManifestLoader().load("file:///workspace/zenwave-architecture.yml")

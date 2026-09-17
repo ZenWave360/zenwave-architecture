@@ -1,7 +1,6 @@
 package io.zenwave360.manifest
 
 import io.zenwave360.jsonrefparser.io.DocumentLoader
-import io.zenwave360.jsonrefparser.platform.RefParserPlatform
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,6 +19,19 @@ class ManifestPlatformTest {
             ManifestPlatform.isAvailable(ManifestPlatform.ARCHIVE_EXTRACTION),
         )
         assertFalse(ManifestPlatform.isAvailable("manifest.unknown"))
+    }
+
+    @Test
+    fun manifestCapabilitiesAreReportedThroughThisLibrarysOwnExceptionAndPlatformName() {
+        // The $ref parser owns filesystem/classpath/HTTP capabilities and its own exception type;
+        // archive extraction is this library's capability, so it reports it itself.
+        val error = ManifestCapabilityUnavailableException(
+            ManifestPlatform.ARCHIVE_EXTRACTION,
+            ManifestPlatform.name,
+        )
+        assertEquals(ManifestPlatform.ARCHIVE_EXTRACTION, error.capability)
+        assertTrue(ManifestPlatform.name in setOf("jvm", "node", "browser"), ManifestPlatform.name)
+        assertEquals(ManifestPlatform.name, error.platform)
     }
 
     @Test
@@ -52,7 +64,7 @@ class ManifestPlatformTest {
             loader.loadArtifactText(manifest, service, artifact)
         }
         val expected = "Final load error: Capability '${ManifestPlatform.ARCHIVE_EXTRACTION}' " +
-            "is not available on ${RefParserPlatform.name}"
+            "is not available on ${ManifestPlatform.name}"
         assertTrue(error.message!!.contains(expected), error.message)
 
         val result = loader.loadArtifactResult(manifest, service, artifact)

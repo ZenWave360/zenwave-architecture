@@ -21,3 +21,5 @@ internal actual fun defaultManifestArchiveEntryLoader(): ManifestArchiveEntryLoa
     }
 
 internal actual fun platformManifestCapabilities(): Set<String> = setOf(ManifestPlatform.ARCHIVE_EXTRACTION)
+
+internal actual fun manifestPlatformName(): String = "jvm"

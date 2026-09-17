@@ -412,11 +412,13 @@ Ask what the platform offers before presenting a feature; asking never fails:
 - `ManifestPlatform.capabilities()` / `isAvailable(ManifestPlatform.ARCHIVE_EXTRACTION)`: reading an
   entry inside an archive (Maven Central/GitHub Packages JARs). Available on the JVM; not on JS unless
   the host passes its own `ManifestArchiveEntryLoader`.
-- `RefParserPlatform` (from `json-schema-ref-parser-kmp`): filesystem, classpath and HTTP reads.
+- `ManifestPlatform.name`: `"jvm"`, `"node"` or `"browser"`.
+- `RefParserPlatform` (from `json-schema-ref-parser-kmp`): filesystem, classpath and HTTP reads,
+  reported separately by that library and with its own `CapabilityUnavailableException`.
 
-A candidate that needs an unavailable capability fails with `CapabilityUnavailableException`, and the
-next content-resolution candidate is tried; if none succeeds, the `ManifestResourceLoadException`
-names the capability. The build runs the JS test suites in headless Chromium (`jsBrowserTest`, part of
+A candidate that needs an unavailable manifest capability fails with
+`ManifestCapabilityUnavailableException`, and the next content-resolution candidate is tried; if none
+succeeds, the `ManifestResourceLoadException` names the capability. The build runs the JS test suites in headless Chromium (`jsBrowserTest`, part of
 `check`; set `CHROME_BIN` if no Chrome, Chromium or Edge is found in a standard location).
 
 ## Kotlin module and verification
