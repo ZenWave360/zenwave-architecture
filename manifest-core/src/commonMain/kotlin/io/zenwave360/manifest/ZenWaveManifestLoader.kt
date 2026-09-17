@@ -364,8 +364,13 @@ class ZenWaveManifestLoader(
         for (candidate in candidates) {
             try {
                 val text = candidate.archiveEntry?.let { entry ->
+                    // No archive reader here (JS without a host-supplied loader): report the
+                    // capability as unavailable and let the next candidate be tried.
                     val loader = archiveEntryLoader
-                        ?: error("No archive-entry loader is available for ${redactUri(candidate.uri)}")
+                        ?: throw ManifestCapabilityUnavailableException(
+                            ManifestPlatform.ARCHIVE_EXTRACTION,
+                            ManifestPlatform.name,
+                        )
                     loader.loadEntry(candidate.uri, entry)
                 } ?: loadText(candidate.uri)
                 return candidate to text

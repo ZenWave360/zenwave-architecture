@@ -11,7 +11,17 @@ rootProject.name = "zenwave-manifest"
 val useLocalDependencies = providers.gradleProperty("useLocalDependencies")
     .map { it.toBooleanStrict() }.getOrElse(true)
 
-val localJsonRefParser = file("../json-schema-ref-parser-kmp")
+// Override sibling locations to build against feature worktrees.
+fun localBuildDir(property: String, environmentVariable: String, default: String): File =
+    file(
+        providers.gradleProperty(property).orNull
+            ?: providers.environmentVariable(environmentVariable).orNull
+            ?: default,
+    )
+
+val localJsonRefParser = localBuildDir(
+    "zenwave.local.jsonRefParserDir", "ZENWAVE_LOCAL_JSON_REF_PARSER_DIR", "../json-schema-ref-parser-kmp",
+)
 if (useLocalDependencies && localJsonRefParser.exists()) {
     includeBuild(localJsonRefParser) {
         dependencySubstitution {
@@ -20,7 +30,7 @@ if (useLocalDependencies && localJsonRefParser.exists()) {
     }
 }
 
-val localDslKotlin = file("../dsl-kotlin")
+val localDslKotlin = localBuildDir("zenwave.local.dslKotlinDir", "ZENWAVE_LOCAL_DSL_KOTLIN_DIR", "../dsl-kotlin")
 if (useLocalDependencies && localDslKotlin.exists()) {
     includeBuild(localDslKotlin) {
         dependencySubstitution {

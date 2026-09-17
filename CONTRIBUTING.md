@@ -51,6 +51,10 @@ include both `manifest-core` and `manifest-graph`.
 # Run JavaScript/Node.js tests for both modules
 ./gradlew :manifest-core:jsNodeTest :manifest-graph:jsNodeTest
 
+# Run the JavaScript tests in headless Chromium (part of check; needs Chrome, Chromium or Edge,
+# found in a standard location or named by CHROME_BIN)
+./gradlew :manifest-core:jsBrowserTest :manifest-graph:jsBrowserTest
+
 # Run JVM tests and generate coverage reports for both modules
 ./gradlew :manifest-core:koverHtmlReport :manifest-graph:koverHtmlReport
 
@@ -67,7 +71,12 @@ include both `manifest-core` and `manifest-graph`.
 ./gradlew :manifest-graph:publishToMavenLocal
 ```
 
-If the sibling repository `../json-schema-ref-parser-kmp` exists, Gradle will use it as a composite build automatically. Otherwise it will resolve `json-schema-ref-parser-kmp` from Maven repositories.
+If the sibling repositories `../json-schema-ref-parser-kmp` or `../dsl-kotlin` exist, Gradle uses them as composite builds automatically. Otherwise it resolves them from Maven repositories. To build against a different checkout (for example a git worktree), name its directory:
+
+```bash
+./gradlew build -Pzenwave.local.dslKotlinDir=../dsl-kotlin-feature     -Pzenwave.local.jsonRefParserDir=../json-schema-ref-parser-kmp-feature
+# or ZENWAVE_LOCAL_DSL_KOTLIN_DIR / ZENWAVE_LOCAL_JSON_REF_PARSER_DIR
+```
 
 The single root-level publish command is the expected path while wiring `zenwave-lsp` and
 `zenwave-sdk` to consume the shared manifest libraries. Publishing only `manifest-core` is not
