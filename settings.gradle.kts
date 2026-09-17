@@ -7,8 +7,12 @@ pluginManagement {
 
 rootProject.name = "zenwave-manifest"
 
+// CI resolves published Maven dependencies; local development can use siblings.
+val useLocalDependencies = providers.gradleProperty("useLocalDependencies")
+    .map { it.toBooleanStrict() }.getOrElse(true)
+
 val localJsonRefParser = file("../json-schema-ref-parser-kmp")
-if (localJsonRefParser.exists()) {
+if (useLocalDependencies && localJsonRefParser.exists()) {
     includeBuild(localJsonRefParser) {
         dependencySubstitution {
             substitute(module("io.zenwave360.jsonrefparser:json-schema-ref-parser-kmp")).using(project(":"))
@@ -17,7 +21,7 @@ if (localJsonRefParser.exists()) {
 }
 
 val localDslKotlin = file("../dsl-kotlin")
-if (localDslKotlin.exists()) {
+if (useLocalDependencies && localDslKotlin.exists()) {
     includeBuild(localDslKotlin) {
         dependencySubstitution {
             substitute(module("io.zenwave360.dsl:dsl-kotlin")).using(project(":"))

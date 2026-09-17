@@ -1,0 +1,6 @@
+{
+  "manifest-core": "ZenWave architecture manifest parser for JavaScript/TypeScript",
+  "manifest-graph": "Semantic architecture graph built from ZenWave manifests and ZDL/ZFL artifacts",
+  "workspace-runtime": "Reusable semantic workspace query runtime for MCP, Web, CLI and LSP adapters",
+  "workspace-mcp": "Model Context Protocol tool adapter for the ZenWave Workspace Query API"
+}
