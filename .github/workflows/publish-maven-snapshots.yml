@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   publish-snapshot:
-    uses: ZenWave360/release-workflows/.github/workflows/publish-snapshots-gradle.yml@main
+    uses: ZenWave360/release-workflows/.github/workflows/publish-snapshots-gradle.yml@e1f06ae5734cf790487acfa1f48f39f3e78aef39
     with:
       java-version: "21"
       kover-xml-files: "./manifest-core/build/reports/kover/report.xml"
@@ -35,7 +35,7 @@ jobs:
   npm-packages:
     needs: publish-snapshot
     if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/next'
-    uses: ./.github/workflows/npm-packages.yml
+    uses: ZenWave360/release-workflows/.github/workflows/npm-packages.yml@e1f06ae5734cf790487acfa1f48f39f3e78aef39
     with:
       ref: ${{ github.sha }}
       snapshot: true

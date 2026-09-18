@@ -56,7 +56,7 @@ jobs:
 
   release:
     needs: validate-npm
-    uses: ZenWave360/release-workflows/.github/workflows/release-gradle.yml@main
+    uses: ZenWave360/release-workflows/.github/workflows/release-gradle.yml@e1f06ae5734cf790487acfa1f48f39f3e78aef39
     with:
       version: ${{ inputs.version }}
       development-version: ${{ inputs.developmentVersion }}
@@ -71,7 +71,7 @@ jobs:
 
   npm-packages:
     needs: release
-    uses: ./.github/workflows/npm-packages.yml
+    uses: ZenWave360/release-workflows/.github/workflows/npm-packages.yml@e1f06ae5734cf790487acfa1f48f39f3e78aef39
     with:
       ref: ${{ format('refs/tags/v{0}', inputs.version) }}
       version: ${{ inputs.version }}

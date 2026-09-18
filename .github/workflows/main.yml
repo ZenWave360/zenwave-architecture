@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    uses: ZenWave360/release-workflows/.github/workflows/main-gradle.yml@main
+    uses: ZenWave360/release-workflows/.github/workflows/main-gradle.yml@e1f06ae5734cf790487acfa1f48f39f3e78aef39
     with:
       java-version: "21"
       kover-xml-files: "./manifest-core/build/reports/kover/report.xml"

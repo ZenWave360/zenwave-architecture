@@ -51,7 +51,7 @@ the same flag locally to reproduce CI dependency resolution.
 
 ## First publication
 
-After committing these changes, dispatch **Build and publish npm packages**
+After committing these changes, dispatch **Build npm bootstrap tarballs**
 (`npm-packages.yml`) on the desired snapshot branch with version
 `1.0.0-next.0`. This standalone workflow only builds, tests, verifies, and uploads
 the `npm-packages` artifact. It does not publish to Maven or npm.
@@ -77,8 +77,12 @@ new prerelease version for the complete package set.
 The existing shared workflows continue to own Maven snapshot publication,
 release version preparation, tagging, Central upload, GitHub releases, and
 development-branch synchronization. Their single-package npm publication is
-disabled in this repository. Both callers use the local reusable
-`npm-packages.yml` for the complete npm package set.
+disabled in this repository. Both callers use the shared
+`ZenWave360/release-workflows/.github/workflows/npm-packages.yml` for the
+complete npm package set. The local `npm-packages.yml` is only a bootstrap
+dispatch caller. Package verification and fresh-install smoke tests remain
+in `scripts/npm-packages.mjs` and `scripts/npm-smoke.sh`. npm continues
+trusting this repository and its existing snapshot/release caller filenames.
 
 - `publish-maven-snapshots.yml`: after Maven publication succeeds on `develop`
   or `next`, build all four packages at `<base>-next.<run_number>.<run_attempt>`
