@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="50 50 300 300" width="400" height="400">
+<title>zenwave-manifest - for dark backgrounds</title>
+<ellipse cx="200" cy="200" rx="70.0" ry="54.6" fill="none" stroke="#DCE6F2" stroke-width="5.0"/>
+<g stroke="#DCE6F2" stroke-linecap="round" fill="none">
+<path d="M200 200 L200.0 145.4" stroke-width="7.0"/>
+<path d="M200.0 145.4 L200.0 90.8" stroke-width="4.0"/>
+<path d="M200 200 L260.6 172.7" stroke-width="7.0"/>
+<path d="M260.6 172.7 L321.2 145.4" stroke-width="4.0"/>
+<path d="M200 200 L260.6 227.3" stroke-width="7.0"/>
+<path d="M260.6 227.3 L321.2 254.6" stroke-width="4.0"/>
+<path d="M200 200 L200.0 254.6" stroke-width="7.0"/>
+<path d="M200.0 254.6 L200.0 309.2" stroke-width="4.0"/>
+<path d="M200 200 L139.4 227.3" stroke-width="7.0"/>
+<path d="M139.4 227.3 L78.8 254.6" stroke-width="4.0"/>
+<path d="M200 200 L139.4 172.7" stroke-width="7.0"/>
+<path d="M139.4 172.7 L78.8 145.4" stroke-width="4.0"/>
+</g>
+<polygon points="182.7,80.8 200.0,90.8 200.0,110.8 182.7,100.8" fill="#12B3B0" stroke="#12B3B0" stroke-width="3" stroke-linejoin="round"/><polygon points="217.3,80.8 217.3,100.8 200.0,110.8 200.0,90.8" fill="#0C8583" stroke="#0C8583" stroke-width="3" stroke-linejoin="round"/><polygon points="200.0,70.8 217.3,80.8 200.0,90.8 182.7,80.8" fill="#6FDAD6" stroke="#6FDAD6" stroke-width="3" stroke-linejoin="round"/>
+<polygon points="303.9,135.4 321.2,145.4 321.2,165.4 303.9,155.4" fill="#12B3B0" stroke="#12B3B0" stroke-width="3" stroke-linejoin="round"/><polygon points="338.6,135.4 338.6,155.4 321.2,165.4 321.2,145.4" fill="#0C8583" stroke="#0C8583" stroke-width="3" stroke-linejoin="round"/><polygon points="321.2,125.4 338.6,135.4 321.2,145.4 303.9,135.4" fill="#6FDAD6" stroke="#6FDAD6" stroke-width="3" stroke-linejoin="round"/>
+<polygon points="303.9,244.6 321.2,254.6 321.2,274.6 303.9,264.6" fill="#12B3B0" stroke="#12B3B0" stroke-width="3" stroke-linejoin="round"/><polygon points="338.6,244.6 338.6,264.6 321.2,274.6 321.2,254.6" fill="#0C8583" stroke="#0C8583" stroke-width="3" stroke-linejoin="round"/><polygon points="321.2,234.6 338.6,244.6 321.2,254.6 303.9,244.6" fill="#6FDAD6" stroke="#6FDAD6" stroke-width="3" stroke-linejoin="round"/>
+<polygon points="182.7,299.2 200.0,309.2 200.0,329.2 182.7,319.2" fill="#12B3B0" stroke="#12B3B0" stroke-width="3" stroke-linejoin="round"/><polygon points="217.3,299.2 217.3,319.2 200.0,329.2 200.0,309.2" fill="#0C8583" stroke="#0C8583" stroke-width="3" stroke-linejoin="round"/><polygon points="200.0,289.2 217.3,299.2 200.0,309.2 182.7,299.2" fill="#6FDAD6" stroke="#6FDAD6" stroke-width="3" stroke-linejoin="round"/>
+<polygon points="61.4,244.6 78.8,254.6 78.8,274.6 61.4,264.6" fill="#12B3B0" stroke="#12B3B0" stroke-width="3" stroke-linejoin="round"/><polygon points="96.1,244.6 96.1,264.6 78.8,274.6 78.8,254.6" fill="#0C8583" stroke="#0C8583" stroke-width="3" stroke-linejoin="round"/><polygon points="78.8,234.6 96.1,244.6 78.8,254.6 61.4,244.6" fill="#6FDAD6" stroke="#6FDAD6" stroke-width="3" stroke-linejoin="round"/>
+<polygon points="61.4,135.4 78.8,145.4 78.8,165.4 61.4,155.4" fill="#12B3B0" stroke="#12B3B0" stroke-width="3" stroke-linejoin="round"/><polygon points="96.1,135.4 96.1,155.4 78.8,165.4 78.8,145.4" fill="#0C8583" stroke="#0C8583" stroke-width="3" stroke-linejoin="round"/><polygon points="78.8,125.4 96.1,135.4 78.8,145.4 61.4,135.4" fill="#6FDAD6" stroke="#6FDAD6" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="200.0" cy="145.4" r="16.0" fill="#F5B63F"/>
+<circle cx="260.6" cy="172.7" r="16.0" fill="#F5B63F"/>
+<circle cx="260.6" cy="227.3" r="16.0" fill="#F5B63F"/>
+<circle cx="200.0" cy="254.6" r="16.0" fill="#F5B63F"/>
+<circle cx="139.4" cy="227.3" r="16.0" fill="#F5B63F"/>
+<circle cx="139.4" cy="172.7" r="16.0" fill="#F5B63F"/>
+<circle cx="200" cy="200" r="24.0" fill="#F5B63F"/>
+</svg>
