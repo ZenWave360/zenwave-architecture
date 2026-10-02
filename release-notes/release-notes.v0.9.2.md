@@ -42,4 +42,4 @@ Patch release **0.9.2** expands ZenWave Manifest from deterministic content load
 - Extends the versioned and latest manifest schemas for explicit artifact coordinates and artifact-qualified consumer references.
 - Adds blocking JVM wrappers for architecture graph construction, API-consumption analysis, channel indexing, manifest editing, and loader operations.
 
-**Full Changelog**: https://github.com/ZenWave360/zenwave-manifest/compare/v0.9.1...v0.9.2
+**Full Changelog**: https://github.com/ZenWave360/zenwave-architecture/compare/v0.9.1...v0.9.2

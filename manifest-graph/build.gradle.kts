@@ -69,7 +69,7 @@ mavenPublishing {
     pom {
         name.set("ZenWave Manifest Graph")
         description.set("Semantic architecture graph built from ZenWave manifests and ZDL/ZFL artifacts")
-        url.set("https://github.com/ZenWave360/zenwave-manifest")
+        url.set("https://github.com/ZenWave360/zenwave-architecture")
         licenses {
             license {
                 name.set("MIT License")
@@ -84,9 +84,9 @@ mavenPublishing {
             }
         }
         scm {
-            connection.set("scm:git:git://github.com/ZenWave360/zenwave-manifest.git")
-            developerConnection.set("scm:git:ssh://github.com/ZenWave360/zenwave-manifest.git")
-            url.set("https://github.com/ZenWave360/zenwave-manifest")
+            connection.set("scm:git:git://github.com/ZenWave360/zenwave-architecture.git")
+            developerConnection.set("scm:git:ssh://github.com/ZenWave360/zenwave-architecture.git")
+            url.set("https://github.com/ZenWave360/zenwave-architecture")
         }
     }
 }

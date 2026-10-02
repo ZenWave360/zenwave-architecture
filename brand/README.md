@@ -1,8 +1,8 @@
-# zenwave-manifest brand
+# zenwave-architecture brand
 
-The mark for the zenwave-manifest, the Architectural World Model of ZenWave.
+The mark for the zenwave-architecture, the Architectural World Model of ZenWave.
 
-![zenwave-manifest mark](svg/zenwave-manifest-color.svg)
+![zenwave-architecture mark](svg/zenwave-architecture-color.svg)
 
 ## What the mark says
 
@@ -18,12 +18,12 @@ Gold is structure. Teal is what gets built. Keep this rule in diagrams and docs 
 
 | File | Use |
 | --- | --- |
-| `svg/zenwave-manifest-color.svg` | Default. Light backgrounds. |
-| `svg/zenwave-manifest-dark.svg` | Dark backgrounds. Lines switch to a light blue-grey. |
-| `svg/zenwave-manifest-mono.svg` | One color, navy. Print, stamps, docs without color. |
-| `svg/zenwave-manifest-mono-white.svg` | One color, white. Photos and dark surfaces. |
-| `svg/zenwave-manifest-avatar.svg` | Mark on a navy disc. GitHub, Slack and social avatars. |
-| `svg/zenwave-manifest-favicon.svg` | Small sizes. Sharp squares and heavier lines. |
+| `svg/zenwave-architecture-color.svg` | Default. Light backgrounds. |
+| `svg/zenwave-architecture-dark.svg` | Dark backgrounds. Lines switch to a light blue-grey. |
+| `svg/zenwave-architecture-mono.svg` | One color, navy. Print, stamps, docs without color. |
+| `svg/zenwave-architecture-mono-white.svg` | One color, white. Photos and dark surfaces. |
+| `svg/zenwave-architecture-avatar.svg` | Mark on a navy disc. GitHub, Slack and social avatars. |
+| `svg/zenwave-architecture-favicon.svg` | Small sizes. Sharp squares and heavier lines. |
 | `png/` | Exports. 512 and 128 px for every version except the favicon. 64, 48, 32 and 16 px for the favicon. |
 | `favicon.ico` | 16, 32 and 48 px. |
 
@@ -57,7 +57,7 @@ Do not:
 
 ## Copies
 
-Other sites and repos should copy these files, not hotlink them. Note the source and version next to each copy, for example `source: zenwave-manifest/brand v1`. Pin README links to a tag, so a later redesign does not change old pages.
+Other sites and repos should copy these files, not hotlink them. Note the source and version next to each copy, for example `source: zenwave-architecture/brand v1`. Pin README links to a tag, so a later redesign does not change old pages.
 
 ## License
 

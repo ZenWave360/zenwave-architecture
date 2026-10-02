@@ -5,7 +5,7 @@ pluginManagement {
     }
 }
 
-rootProject.name = "zenwave-manifest"
+rootProject.name = "zenwave-architecture"
 
 // CI resolves published Maven dependencies; local development can use siblings.
 val useLocalDependencies = providers.gradleProperty("useLocalDependencies")

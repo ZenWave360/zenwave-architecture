@@ -852,12 +852,12 @@ graph. The LSP core and both editor clients live in the `zenwave-lsp`
 repository. The clients keep independent packaging and marketplace release
 tasks.
 
-**Repository ownership.** `zenwave-manifest` owns the Architecture Graph,
+**Repository ownership.** `zenwave-architecture` owns the Architecture Graph,
 `WorkspaceQueryApi`, validation CLI, MCP adapter and Web Explorer. It contains
 no LSP protocol or editor SDK types. `zenwave-lsp` owns its existing `lsp-core`,
 the JVM and JavaScript transports, and the IntelliJ and VS Code clients.
 `lsp-core` depends one-way on `workspace-runtime`; no dependency points back
-from `zenwave-manifest` to `zenwave-lsp`.
+from `zenwave-architecture` to `zenwave-lsp`.
 
 ## 22. Open questions
 

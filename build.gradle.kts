@@ -39,7 +39,7 @@ subprojects {
 
     if (name in npmPackages) {
         val moduleName = name
-        val packageDirectory = rootProject.layout.buildDirectory.dir("js/packages/zenwave-manifest-$moduleName")
+        val packageDirectory = rootProject.layout.buildDirectory.dir("js/packages/zenwave-architecture-$moduleName")
         val tarball = rootProject.layout.buildDirectory.file("npm/zenwave360-$moduleName-$npmVersion.tgz")
         plugins.withId("org.jetbrains.kotlin.multiplatform") {
             extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension> {
@@ -53,10 +53,10 @@ subprojects {
                             "registry" to "https://registry.npmjs.org/",
                             "tag" to if (npmVersion.contains("-")) "next" else "latest"
                         ))
-                        customField("homepage", "https://github.com/ZenWave360/zenwave-manifest")
+                        customField("homepage", "https://github.com/ZenWave360/zenwave-architecture")
                         customField("repository", mapOf(
                             "type" to "git",
-                            "url" to "git+https://github.com/ZenWave360/zenwave-manifest.git"
+                            "url" to "git+https://github.com/ZenWave360/zenwave-architecture.git"
                         ))
                         customField("license", "MIT")
                     }
@@ -81,7 +81,7 @@ subprojects {
                 outputs.file(tarball)
                 workingDir(rootProject.projectDir)
                 val arguments = listOf(
-                    "pack", "./build/js/packages/zenwave-manifest-$moduleName",
+                    "pack", "./build/js/packages/zenwave-architecture-$moduleName",
                     "--ignore-scripts", "--pack-destination", "./build/npm"
                 )
                 if (System.getProperty("os.name").startsWith("Windows")) {

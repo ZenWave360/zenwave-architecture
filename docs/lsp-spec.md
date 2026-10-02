@@ -29,10 +29,10 @@ The repository boundary is explicit:
 
 | Repository | Owns |
 |---|---|
-| `zenwave-manifest` | `manifest-core`, `manifest-graph`, `workspace-runtime`, validation CLI and MCP adapter |
+| `zenwave-architecture` | `manifest-core`, `manifest-graph`, `workspace-runtime`, validation CLI and MCP adapter |
 | `zenwave-lsp` | `lsp-core`, `lsp-jvm`, `lsp-js`, IntelliJ plugin and VS Code extension |
 
-There is no `lsp-core` module in `zenwave-manifest`. The protocol-neutral
+There is no `lsp-core` module in `zenwave-architecture`. The protocol-neutral
 architecture contract already lives there as `WorkspaceQueryApi`. The existing
 `zenwave-lsp/lsp-core` consumes that contract and owns the crossing between open
 documents and Workspace concepts.
@@ -46,10 +46,10 @@ IntelliJ / VS Code
 zenwave-lsp: lsp-core, lsp-jvm, lsp-js
         |
         v
-zenwave-manifest: workspace-runtime -> manifest-graph -> manifest-core
+zenwave-architecture: workspace-runtime -> manifest-graph -> manifest-core
 ```
 
-No dependency points from `zenwave-manifest` back to `zenwave-lsp`.
+No dependency points from `zenwave-architecture` back to `zenwave-lsp`.
 
 Two products share the LSP wire protocol and must not be confused.
 

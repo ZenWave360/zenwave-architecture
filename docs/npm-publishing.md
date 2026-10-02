@@ -109,8 +109,8 @@ on **each** of the four npm packages:
 
 | Organization | Repository | Calling workflow filename | Environment |
 | --- | --- | --- | --- |
-| ZenWave360 | zenwave-manifest | `publish-maven-snapshots.yml` | `npm-snapshots` |
-| ZenWave360 | zenwave-manifest | `release.yml` | `npm-publish` |
+| ZenWave360 | zenwave-architecture | `publish-maven-snapshots.yml` | `npm-snapshots` |
+| ZenWave360 | zenwave-architecture | `release.yml` | `npm-publish` |
 
 Allow direct `npm publish` for both publisher configurations. npm validates the
 calling workflow filename when a reusable workflow performs publication.

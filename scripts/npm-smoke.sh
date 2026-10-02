@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import { packages } from './scripts/npm-packages.mjs';
 fs.mkdirSync('build/npm-smoke', { recursive: true });
 fs.writeFileSync('build/npm-smoke/package.json', JSON.stringify({
-  name: 'zenwave-manifest-npm-smoke', version: '0.0.0', private: true,
+  name: 'zenwave-architecture-npm-smoke', version: '0.0.0', private: true,
   dependencies: Object.fromEntries(packages.map(name => [
     `@zenwave360/${name}`, `file:../npm/zenwave360-${name}-${process.env.NPM_VERSION}.tgz`,
   ])),
