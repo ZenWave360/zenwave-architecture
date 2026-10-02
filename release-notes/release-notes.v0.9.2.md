@@ -28,7 +28,7 @@ Patch release **0.9.2** expands ZenWave Manifest from deterministic content load
 
 ### Typed Semantic Architecture Graph
 
-- Adds the Kotlin Multiplatform `manifest-graph` module for JVM and Node/JS, with blocking JVM entry points for Java and synchronous callers.
+- Adds the Kotlin Multiplatform `architecture-graph` module for JVM and Node/JS, with blocking JVM entry points for Java and synchronous callers.
 - Builds stable, URI-safe nodes and edges for manifest domains, subdomains, services, artifacts, API operations, channels, messages, ZDL models, and ZFL flows.
 - Retains source URI, artifact ownership, semantic path, line/column provenance, and diagnostics for loaded artifact content.
 - Adds built-in ZDL and ZFL analyzers plus an extension point for additional artifact analyzers.

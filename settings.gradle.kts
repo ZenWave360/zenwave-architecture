@@ -39,4 +39,4 @@ if (useLocalDependencies && localDslKotlin.exists()) {
     }
 }
 
-include("manifest-core", "manifest-graph", "workspace-runtime", "workspace-mcp", "workspace-cli")
+include("architecture-manifest", "architecture-graph", "workspace-runtime", "workspace-mcp", "workspace-cli")

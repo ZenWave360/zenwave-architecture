@@ -12,19 +12,19 @@ CI artifacts, versioning, and trusted publisher setup.
 
 The release workflow publishes these coordinates:
 
-- `io.zenwave360.manifest:manifest-core`
-- `io.zenwave360.manifest:manifest-core-jvm`
-- `io.zenwave360.manifest:manifest-core-js`
-- `io.zenwave360.manifest:manifest-graph` (also `-jvm` and `-js`)
-- `io.zenwave360.manifest:workspace-runtime` (also `-jvm` and `-js`)
-- `io.zenwave360.manifest:workspace-mcp` (also `-jvm` and `-js`)
+- `io.zenwave360.architecture:architecture-manifest`
+- `io.zenwave360.architecture:architecture-manifest-jvm`
+- `io.zenwave360.architecture:architecture-manifest-js`
+- `io.zenwave360.architecture:architecture-graph` (also `-jvm` and `-js`)
+- `io.zenwave360.architecture:workspace-runtime` (also `-jvm` and `-js`)
+- `io.zenwave360.architecture:workspace-mcp` (also `-jvm` and `-js`)
 
 ## Repository Prerequisites
 
 Before the first public release, make sure all of the following are in place:
 
 1. The GitHub repository is public.
-2. The `io.zenwave360.manifest` namespace is registered and verified in the Sonatype Central Portal.
+2. The `io.zenwave360.architecture` namespace is registered and verified in the Sonatype Central Portal.
 3. A GPG keypair exists for artifact signing and the public key has been published.
 4. GitHub Actions secrets are configured.
 

@@ -16,7 +16,7 @@ kotlin {
     }
     sourceSets {
         commonMain.dependencies {
-            api(project(":manifest-graph"))
+            api(project(":architecture-graph"))
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

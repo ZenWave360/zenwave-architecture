@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.maven.publish) apply false
 }
 
-group = "io.zenwave360.manifest"
+group = "io.zenwave360.architecture"
 version = "1.0.0-SNAPSHOT"
 
 val npmVersion = providers.gradleProperty("npmVersion")

@@ -5,8 +5,8 @@ the root `build.gradle.kts`:
 
 | Module | npm package |
 | --- | --- |
-| manifest-core | `@zenwave360/manifest-core` |
-| manifest-graph | `@zenwave360/manifest-graph` |
+| architecture-manifest | `@zenwave360/architecture-manifest` |
+| architecture-graph | `@zenwave360/architecture-graph` |
 | workspace-runtime | `@zenwave360/workspace-runtime` |
 | workspace-mcp | `@zenwave360/workspace-mcp` |
 
@@ -62,8 +62,8 @@ above to produce the same tarballs locally. Then run:
 ```bash
 npm login --registry=https://registry.npmjs.org/
 
-npm publish ./build/npm/zenwave360-manifest-core-1.0.0-next.0.tgz --registry=https://registry.npmjs.org/ --access public --tag next
-npm publish ./build/npm/zenwave360-manifest-graph-1.0.0-next.0.tgz --registry=https://registry.npmjs.org/ --access public --tag next
+npm publish ./build/npm/zenwave360-architecture-manifest-1.0.0-next.0.tgz --registry=https://registry.npmjs.org/ --access public --tag next
+npm publish ./build/npm/zenwave360-architecture-graph-1.0.0-next.0.tgz --registry=https://registry.npmjs.org/ --access public --tag next
 npm publish ./build/npm/zenwave360-workspace-runtime-1.0.0-next.0.tgz --registry=https://registry.npmjs.org/ --access public --tag next
 npm publish ./build/npm/zenwave360-workspace-mcp-1.0.0-next.0.tgz --registry=https://registry.npmjs.org/ --access public --tag next
 ```

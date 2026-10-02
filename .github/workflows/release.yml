@@ -60,7 +60,7 @@ jobs:
     with:
       version: ${{ inputs.version }}
       development-version: ${{ inputs.developmentVersion }}
-      artifact-id: manifest-core
+      artifact-id: architecture-manifest
       java-version: "21"
       publish-npm: false
     secrets:

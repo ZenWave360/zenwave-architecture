@@ -29,7 +29,7 @@ The repository boundary is explicit:
 
 | Repository | Owns |
 |---|---|
-| `zenwave-architecture` | `manifest-core`, `manifest-graph`, `workspace-runtime`, validation CLI and MCP adapter |
+| `zenwave-architecture` | `architecture-manifest`, `architecture-graph`, `workspace-runtime`, validation CLI and MCP adapter |
 | `zenwave-lsp` | `lsp-core`, `lsp-jvm`, `lsp-js`, IntelliJ plugin and VS Code extension |
 
 There is no `lsp-core` module in `zenwave-architecture`. The protocol-neutral
@@ -46,7 +46,7 @@ IntelliJ / VS Code
 zenwave-lsp: lsp-core, lsp-jvm, lsp-js
         |
         v
-zenwave-architecture: workspace-runtime -> manifest-graph -> manifest-core
+zenwave-architecture: workspace-runtime -> architecture-graph -> architecture-manifest
 ```
 
 No dependency points from `zenwave-architecture` back to `zenwave-lsp`.
@@ -353,7 +353,7 @@ lsp-core (KMP)
   architecture plane  facade over WorkspaceQueryApi
         |
         v
-  workspace-runtime  ->  manifest-graph  ->  manifest-core
+  workspace-runtime  ->  architecture-graph  ->  architecture-manifest
         |
         +--------------------------+
         |                          |
@@ -365,15 +365,15 @@ lsp-core (KMP)
 Rules:
 
 - The dependency is one-way and stays one-way. No type from `io.zenwave360.lsp`
-  may appear in any `io.zenwave360.manifest` signature. `mcp-spec.md` section
+  may appear in any `io.zenwave360.architecture` signature. `mcp-spec.md` section
   6.4 is the invariant; a Gradle module boundary is the enforcement.
 - `lsp-core` depends on the `WorkspaceQueryApi` interface, not on
   `DefaultWorkspaceQueryApi`, so the architecture plane is testable against a
   fixture graph with no manifest loading.
-- `workspace-runtime` and `manifest-graph` target `jvm()` and `js(IR)/nodejs()`,
+- `workspace-runtime` and `architecture-graph` target `jvm()` and `js(IR)/nodejs()`,
   matching `lsp-jvm` and `lsp-js`. Both transports get the same plane.
-- `settings.gradle.kts` in `zenwave-lsp` already substitutes `manifest-core`;
-  it gains `manifest-graph` and `workspace-runtime`.
+- `settings.gradle.kts` in `zenwave-lsp` already substitutes `architecture-manifest`;
+  it gains `architecture-graph` and `workspace-runtime`.
 - IntelliJ and VS Code packaging stays outside `lsp-core`. It may use dedicated
   modules or directories in `zenwave-lsp`, but it may depend only on the
   corresponding server transport and shared wire DTOs.

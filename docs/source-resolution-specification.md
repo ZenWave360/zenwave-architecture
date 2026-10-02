@@ -1,9 +1,9 @@
-# ZenWave Manifest 1.0 read-resolution specification
+# Architecture Manifest 1.0 read-resolution specification
 
 Status: current contract  
 Date: 2026-07-15
 
-ZenWave Manifest 1.0 is read-only. A conforming implementation resolves content but does not publish, upload, register, clone, push, commit, tag, sign, or deploy manifest-managed content.
+Architecture Manifest 1.0 is read-only. A conforming implementation resolves content but does not publish, upload, register, clone, push, commit, tag, sign, or deploy manifest-managed content.
 
 ## 1. Manifest identity and content
 

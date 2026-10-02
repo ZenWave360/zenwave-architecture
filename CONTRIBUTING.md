@@ -3,8 +3,8 @@
 This repository has three deliverables:
 
 - the published schema site served from `schemas.zenwave360.io`
-- the shared Kotlin library in `manifest-core`
-- the architecture graph library in `manifest-graph`
+- the shared Kotlin library in `architecture-manifest`
+- the architecture graph library in `architecture-graph`
 
 The workflow is intentionally close to `json-schema-ref-parser-kmp`. Both libraries are Kotlin
 Multiplatform modules with JVM and JavaScript targets.
@@ -31,32 +31,32 @@ On Windows with Git Bash:
 
 ### Repository layout
 
-- `manifest-core/` - shared manifest parsing and loading library
-- `manifest-graph/` - typed architecture graph and artifact analyzers
+- `architecture-manifest/` - shared manifest parsing and loading library
+- `architecture-graph/` - typed architecture graph and artifact analyzers
 - `zenwave-architecture/` - published JSON Schema paths
 - `index.html`, `CNAME`, `.nojekyll` - GitHub Pages site assets
 
 ### Build Commands
 
 Run these commands from the repository root. Root-level `build` and `publishToMavenLocal` tasks
-include both `manifest-core` and `manifest-graph`.
+include both `architecture-manifest` and `architecture-graph`.
 
 ```bash
 # Build both modules
 ./gradlew clean build
 
 # Run JVM tests for both modules
-./gradlew :manifest-core:jvmTest :manifest-graph:jvmTest
+./gradlew :architecture-manifest:jvmTest :architecture-graph:jvmTest
 
 # Run JavaScript/Node.js tests for both modules
-./gradlew :manifest-core:jsNodeTest :manifest-graph:jsNodeTest
+./gradlew :architecture-manifest:jsNodeTest :architecture-graph:jsNodeTest
 
 # Run the JavaScript tests in headless Chromium (part of check; needs Chrome, Chromium or Edge,
 # found in a standard location or named by CHROME_BIN)
-./gradlew :manifest-core:jsBrowserTest :manifest-graph:jsBrowserTest
+./gradlew :architecture-manifest:jsBrowserTest :architecture-graph:jsBrowserTest
 
 # Run JVM tests and generate coverage reports for both modules
-./gradlew :manifest-core:koverHtmlReport :manifest-graph:koverHtmlReport
+./gradlew :architecture-manifest:koverHtmlReport :architecture-graph:koverHtmlReport
 
 # Publish both modules to the local Maven repository
 ./gradlew clean publishToMavenLocal
@@ -65,10 +65,10 @@ include both `manifest-core` and `manifest-graph`.
 ./gradlew clean build publishToMavenLocal
 
 # Build or publish one module only
-./gradlew :manifest-core:build
-./gradlew :manifest-graph:build
-./gradlew :manifest-core:publishToMavenLocal
-./gradlew :manifest-graph:publishToMavenLocal
+./gradlew :architecture-manifest:build
+./gradlew :architecture-graph:build
+./gradlew :architecture-manifest:publishToMavenLocal
+./gradlew :architecture-graph:publishToMavenLocal
 ```
 
 If the sibling repositories `../json-schema-ref-parser-kmp` or `../dsl-kotlin` exist, Gradle uses them as composite builds automatically. Otherwise it resolves them from Maven repositories. To build against a different checkout (for example a git worktree), name its directory:
@@ -79,7 +79,7 @@ If the sibling repositories `../json-schema-ref-parser-kmp` or `../dsl-kotlin` e
 ```
 
 The single root-level publish command is the expected path while wiring `zenwave-lsp` and
-`zenwave-sdk` to consume the shared manifest libraries. Publishing only `manifest-core` is not
+`zenwave-sdk` to consume the shared manifest libraries. Publishing only `architecture-manifest` is not
 enough for consumers that use architecture graph APIs.
 
 ## Schema development
@@ -123,7 +123,7 @@ Recommended pattern:
 
 ## Releasing the library
 
-`manifest-core` and `manifest-graph` are configured for Maven Central publishing with the same
+`architecture-manifest` and `architecture-graph` are configured for Maven Central publishing with the same
 general model used in `json-schema-ref-parser-kmp`.
 
 Standard local verification:
@@ -151,16 +151,16 @@ Public release automation is defined under `.github/workflows/` and the full ope
 ## Contribution guidelines
 
 - Keep the schema authoring contract and the Kotlin normalized model aligned.
-- Do not add LSP-specific or generator-specific behavior into `manifest-core`.
-- Prefer adding tests in `manifest-core/src/commonTest` for parsing, interpolation, normalization, and URI resolution changes.
-- Prefer adding tests in `manifest-graph/src/commonTest` for graph identities, bindings, traversal, and artifact analyzer changes.
+- Do not add LSP-specific or generator-specific behavior into `architecture-manifest`.
+- Prefer adding tests in `architecture-manifest/src/commonTest` for parsing, interpolation, normalization, and URI resolution changes.
+- Prefer adding tests in `architecture-graph/src/commonTest` for graph identities, bindings, traversal, and artifact analyzer changes.
 - Keep public schema URLs stable.
 - Use a new schema version path for breaking authoring changes.
 
 ## Recommended change flow
 
 1. Update the schema, parser, or model.
-2. Add or update tests in `manifest-core` and/or `manifest-graph`.
+2. Add or update tests in `architecture-manifest` and/or `architecture-graph`.
 3. Run:
 
 ```bash

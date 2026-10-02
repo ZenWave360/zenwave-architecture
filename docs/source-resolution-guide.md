@@ -1,6 +1,6 @@
 # Source-resolution guide
 
-This is the detailed runtime guide for ZenWave Manifest 1.0. The [1.0 schema](../zenwave-architecture/1.0/schema.json), [latest schema](../zenwave-architecture/latest/schema.json), Kotlin model, parser, and resolver implement the same read-only contract.
+This is the detailed runtime guide for Architecture Manifest 1.0. The [1.0 schema](../zenwave-architecture/1.0/schema.json), [latest schema](../zenwave-architecture/latest/schema.json), Kotlin model, parser, and resolver implement the same read-only contract.
 
 Version 1 reads manifest-managed content. It never publishes, uploads, registers, clones, pushes, commits, tags, signs, or deploys it.
 

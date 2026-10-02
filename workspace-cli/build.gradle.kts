@@ -15,7 +15,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("io.zenwave360.manifest.cli.MainKt")
+    mainClass.set("io.zenwave360.architecture.cli.MainKt")
     applicationName = "zenwave"
 }
 

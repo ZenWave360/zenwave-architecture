@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { checkRelease, npmVersion, packages } from './npm-packages.mjs';
 
 test('all four npm modules share the Maven version train', () => {
-  assert.deepEqual(packages, ['manifest-core', 'manifest-graph', 'workspace-runtime', 'workspace-mcp']);
+  assert.deepEqual(packages, ['architecture-manifest', 'architecture-graph', 'workspace-runtime', 'workspace-mcp']);
   const snapshot = 'version = "1.0.0-SNAPSHOT"';
   assert.equal(npmVersion(snapshot), '1.0.0-next.0');
   assert.equal(npmVersion(`${snapshot}\r\n`), '1.0.0-next.0');

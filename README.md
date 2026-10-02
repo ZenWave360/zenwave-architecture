@@ -1,12 +1,12 @@
-# ZenWave Manifest
+# ZenWave Architecture
 
-[![Maven Central](https://img.shields.io/maven-central/v/io.zenwave360.manifest/manifest-core.svg?label=Maven%20Central&logo=apachemaven)](https://search.maven.org/artifact/io.zenwave360.manifest/manifest-core)
+[![Maven Central](https://img.shields.io/maven-central/v/io.zenwave360.architecture/architecture-manifest.svg?label=Maven%20Central&logo=apachemaven)](https://search.maven.org/artifact/io.zenwave360.architecture/architecture-manifest)
 [![build](https://github.com/ZenWave360/zenwave-architecture/actions/workflows/publish-maven-snapshots.yml/badge.svg?branch=develop)](https://github.com/ZenWave360/zenwave-architecture/actions/workflows/publish-maven-snapshots.yml)
 [![line coverage](https://raw.githubusercontent.com/ZenWave360/zenwave-architecture/badges/coverage.svg)](https://github.com/ZenWave360/zenwave-architecture/actions/workflows/main.yml)
 [![branch coverage](https://raw.githubusercontent.com/ZenWave360/zenwave-architecture/badges/branches.svg)](https://github.com/ZenWave360/zenwave-architecture/actions/workflows/main.yml)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/ZenWave360/zenwave-architecture/blob/main/LICENSE)
 
-ZenWave Manifest is the architecture contract shared by ZenWave tools. A hand-authored `zenwave-architecture.yml` describes domains, services, documentation, and artifacts; the Kotlin Multiplatform library resolves that content deterministically from workspace, Git, Apicurio Registry, generic Artifactory, or Maven sources. Its source-aware editor can update existing scalar values without reserializing the surrounding YAML.
+ZenWave Architecture is the architecture contract shared by ZenWave tools. A hand-authored Architecture Manifest (`zenwave-architecture.yml`) describes domains, services, documentation, and artifacts; the Kotlin Multiplatform library resolves that content deterministically from workspace, Git, Apicurio Registry, generic Artifactory, or Maven sources. Its source-aware editor can update existing scalar values without reserializing the surrounding YAML.
 
 
 - Versioned schema: `https://schemas.zenwave360.io/zenwave-architecture/1.0/schema.json`
@@ -242,8 +242,8 @@ for backwards compatibility but do not create artifact-level consumption edges.
 
 ## Semantic architecture graph
 
-The `manifest-graph` Kotlin Multiplatform module builds a typed, source-aware graph from a resolved
-manifest and its artifacts. It runs on JVM and Node/JS and deliberately sits above `manifest-core`:
+The `architecture-graph` Kotlin Multiplatform module builds a typed, source-aware graph from a resolved
+manifest and its artifacts. It runs on JVM and Node/JS and deliberately sits above `architecture-manifest`:
 manifest loading remains format-agnostic, while the graph module depends on `dsl-kotlin` for its
 built-in ZDL and ZFL analyzers.
 
@@ -277,7 +277,7 @@ JVM callers that do not use coroutines can use `BlockingArchitectureGraph.build(
 one or more `ManifestGraphArtifactAnalyzer` implementations to `ArchitectureGraphBuilder`; matching
 analyzers share the already-loaded artifact content and their contributions are merged. AsyncAPI
 classification and operation-level consumption are supplied by the typed, catalog-agnostic
-`ManifestApiConsumptions` API in `manifest-core`; graph and presentation layers project that evidence
+`ManifestApiConsumptions` API in `architecture-manifest`; graph and presentation layers project that evidence
 without maintaining their own YAML matching engines.
 
 Callers can resolve either a unique effective artifact ID or every artifact of a declared type on
@@ -436,7 +436,7 @@ including a resource stored inside an archive.
 
 ## Browsers and Web Workers
 
-`manifest-core` and `manifest-graph` load and run in a browser or Web Worker with no Node runtime.
+`architecture-manifest` and `architecture-graph` load and run in a browser or Web Worker with no Node runtime.
 Supply the means of reading content: every manifest, `$ref`, document and artifact read goes
 through the `DocumentLoader`s you pass, and nothing else is needed to load the library.
 
@@ -462,14 +462,14 @@ succeeds, the `ManifestResourceLoadException` names the capability. The build ru
 
 ## Kotlin module and verification
 
-`manifest-core` contains common parsing, diagnostics, interpolation, and candidate construction for JVM and JavaScript. JVM also provides Maven Central JAR entry extraction; JavaScript hosts can supply an archive-entry loader.
+`architecture-manifest` contains common parsing, diagnostics, interpolation, and candidate construction for JVM and JavaScript. JVM also provides Maven Central JAR entry extraction; JavaScript hosts can supply an archive-entry loader.
 
-Published library coordinates are `io.zenwave360.manifest:manifest-core`, `manifest-core-jvm`, and `manifest-core-js`.
+Published library coordinates are `io.zenwave360.architecture:architecture-manifest`, `architecture-manifest-jvm`, and `architecture-manifest-js`.
 
 Run:
 
 ```text
-./gradlew :manifest-core:jvmTest
+./gradlew :architecture-manifest:jvmTest
 ```
 
 The suite validates both schemas and every complete README YAML block marked `schema-test: valid`. Release workflow details are in [RELEASING.md](RELEASING.md); this repository is licensed under the [MIT License](LICENSE).
