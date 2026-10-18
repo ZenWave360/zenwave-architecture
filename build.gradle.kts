@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "io.zenwave360.architecture"
-version = "0.9.5"
+version = "1.0.0-SNAPSHOT"
 
 val npmVersion = providers.gradleProperty("npmVersion")
     .getOrElse(version.toString().replace("-SNAPSHOT", "-next.0"))
