@@ -19,7 +19,7 @@
 /gradle/                        @ivangsa
 /gradlew                        @ivangsa
 /gradlew.bat                    @ivangsa
-/manifest-core/build.gradle.kts @ivangsa
+/architecture-manifest/build.gradle.kts @ivangsa
 
 # Release notes consumed verbatim by the release workflow.
 /release-notes/                 @ivangsa

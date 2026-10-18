@@ -1,0 +1,14 @@
+config:
+  sources:
+    workspace:
+      basePathExpression: "${owner.repository}"
+domains:
+  sales:
+    subdomains:
+      ordering:
+        services:
+          order-service:
+            repository: orders
+            artifacts:
+              - { artifactId: orders-http, type: openapi, path: openapi.yml, version: 1.0.0 }
+              - { artifactId: orders-events, type: asyncapi, path: asyncapi.yml, version: 1.0.0 }

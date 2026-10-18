@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="50 50 300 300" width="400" height="400">
+<title>zenwave-architecture - mono navy</title>
+<ellipse cx="200" cy="200" rx="70.0" ry="54.6" fill="none" stroke="#0B2A4F" stroke-width="5.0"/>
+<g stroke="#0B2A4F" stroke-linecap="round" fill="none">
+<path d="M200 200 L200.0 145.4" stroke-width="7.0"/>
+<path d="M200.0 145.4 L200.0 90.8" stroke-width="4.0"/>
+<path d="M200 200 L260.6 172.7" stroke-width="7.0"/>
+<path d="M260.6 172.7 L321.2 145.4" stroke-width="4.0"/>
+<path d="M200 200 L260.6 227.3" stroke-width="7.0"/>
+<path d="M260.6 227.3 L321.2 254.6" stroke-width="4.0"/>
+<path d="M200 200 L200.0 254.6" stroke-width="7.0"/>
+<path d="M200.0 254.6 L200.0 309.2" stroke-width="4.0"/>
+<path d="M200 200 L139.4 227.3" stroke-width="7.0"/>
+<path d="M139.4 227.3 L78.8 254.6" stroke-width="4.0"/>
+<path d="M200 200 L139.4 172.7" stroke-width="7.0"/>
+<path d="M139.4 172.7 L78.8 145.4" stroke-width="4.0"/>
+</g>
+<polygon points="183.7,82.6 199.0,91.4 199.0,109.0 183.7,100.2" fill="#0B2A4F"/><polygon points="216.3,82.6 216.3,100.2 201.0,109.0 201.0,91.4" fill="#0B2A4F"/><polygon points="200.0,72.0 215.2,80.8 200.0,89.6 184.8,80.8" fill="#0B2A4F"/>
+<polygon points="305.0,137.2 320.2,146.0 320.2,163.6 305.0,154.8" fill="#0B2A4F"/><polygon points="337.5,137.2 337.5,154.8 322.3,163.6 322.3,146.0" fill="#0B2A4F"/><polygon points="321.2,126.6 336.5,135.4 321.2,144.2 306.0,135.4" fill="#0B2A4F"/>
+<polygon points="305.0,246.4 320.2,255.2 320.2,272.8 305.0,264.0" fill="#0B2A4F"/><polygon points="337.5,246.4 337.5,264.0 322.3,272.8 322.3,255.2" fill="#0B2A4F"/><polygon points="321.2,235.8 336.5,244.6 321.2,253.4 306.0,244.6" fill="#0B2A4F"/>
+<polygon points="183.7,301.0 199.0,309.8 199.0,327.4 183.7,318.6" fill="#0B2A4F"/><polygon points="216.3,301.0 216.3,318.6 201.0,327.4 201.0,309.8" fill="#0B2A4F"/><polygon points="200.0,290.4 215.2,299.2 200.0,308.0 184.8,299.2" fill="#0B2A4F"/>
+<polygon points="62.5,246.4 77.7,255.2 77.7,272.8 62.5,264.0" fill="#0B2A4F"/><polygon points="95.0,246.4 95.0,264.0 79.8,272.8 79.8,255.2" fill="#0B2A4F"/><polygon points="78.8,235.8 94.0,244.6 78.8,253.4 63.5,244.6" fill="#0B2A4F"/>
+<polygon points="62.5,137.2 77.7,146.0 77.7,163.6 62.5,154.8" fill="#0B2A4F"/><polygon points="95.0,137.2 95.0,154.8 79.8,163.6 79.8,146.0" fill="#0B2A4F"/><polygon points="78.8,126.6 94.0,135.4 78.8,144.2 63.5,135.4" fill="#0B2A4F"/>
+<circle cx="200.0" cy="145.4" r="16.0" fill="#0B2A4F"/>
+<circle cx="260.6" cy="172.7" r="16.0" fill="#0B2A4F"/>
+<circle cx="260.6" cy="227.3" r="16.0" fill="#0B2A4F"/>
+<circle cx="200.0" cy="254.6" r="16.0" fill="#0B2A4F"/>
+<circle cx="139.4" cy="227.3" r="16.0" fill="#0B2A4F"/>
+<circle cx="139.4" cy="172.7" r="16.0" fill="#0B2A4F"/>
+<circle cx="200" cy="200" r="24.0" fill="#0B2A4F"/>
+</svg>

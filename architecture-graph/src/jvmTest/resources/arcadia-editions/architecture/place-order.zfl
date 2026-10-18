@@ -1,0 +1,12 @@
+systems {
+    @zdl("orders/model.zdl")
+    Orders { service OrdersService }
+}
+flow PlaceOrderFlow {
+    start StartOrder { id String }
+    when StartOrder do placeOrder {
+        service Orders.OrdersService
+        emits OrderPlaced
+    }
+    end { completed: OrderPlaced }
+}

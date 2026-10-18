@@ -177,6 +177,7 @@
         "version": { "$ref": "#/$defs/version" },
         "name": { "type": "string" },
         "description": { "type": "string" },
+        "aliases": { "$ref": "#/$defs/aliases" },
         "repository": { "$ref": "#/$defs/nonBlank" },
         "groupId": { "$ref": "#/$defs/nonBlank" },
         "docs": {
@@ -208,6 +209,7 @@
         "version": { "$ref": "#/$defs/version" },
         "name": { "type": "string" },
         "description": { "type": "string" },
+        "aliases": { "$ref": "#/$defs/aliases" },
         "services": {
           "type": "object",
           "propertyNames": { "$ref": "#/$defs/nonBlank" },
@@ -225,6 +227,7 @@
         "version": { "$ref": "#/$defs/version" },
         "name": { "type": "string" },
         "description": { "type": "string" },
+        "aliases": { "$ref": "#/$defs/aliases" },
         "docs": {
           "type": "object",
           "propertyNames": { "pattern": "^[A-Za-z0-9._-]+$" },
@@ -265,6 +268,12 @@
         "version": { "$ref": "#/$defs/version" }
       },
       "required": ["type", "path", "version"]
+    },
+    "aliases": {
+      "type": "array",
+      "description": "Append-only historical semantic IDs or sibling names for this architectural element.",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nonBlank" }
     },
     "requireActiveGit": {
       "if": { "$ref": "#/$defs/selectsGit" },

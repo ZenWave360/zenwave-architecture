@@ -4,9 +4,16 @@ on:
   push:
     branches: [develop, next]
   workflow_dispatch:
+    inputs:
+      publishNpm:
+        description: "Publish all four npm packages to next (disable to download tarballs only)"
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: maven-snapshots-${{ github.ref }}
@@ -14,12 +21,23 @@ concurrency:
 
 jobs:
   publish-snapshot:
-    uses: ZenWave360/release-workflows/.github/workflows/publish-snapshots-gradle.yml@main
+    uses: ZenWave360/release-workflows/.github/workflows/publish-snapshots-gradle.yml@e1f06ae5734cf790487acfa1f48f39f3e78aef39
     with:
       java-version: "21"
-      kover-xml-files: "./manifest-core/build/reports/kover/report.xml"
+      kover-xml-files: "./architecture-manifest/build/reports/kover/report.xml"
+      publish-npm: false
     secrets:
       CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
       CENTRAL_TOKEN: ${{ secrets.CENTRAL_TOKEN }}
       SIGN_KEY: ${{ secrets.SIGN_KEY }}
       SIGN_KEY_PASS: ${{ secrets.SIGN_KEY_PASS }}
+
+  npm-packages:
+    needs: publish-snapshot
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/next'
+    uses: ZenWave360/release-workflows/.github/workflows/npm-packages.yml@e1f06ae5734cf790487acfa1f48f39f3e78aef39
+    with:
+      ref: ${{ github.sha }}
+      snapshot: true
+      publish: ${{ github.event_name == 'push' || inputs.publishNpm }}
+      environment: npm-snapshots

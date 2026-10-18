@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="48 48 304 304" width="400" height="400">
+<title>zenwave-architecture - favicon</title>
+<ellipse cx="200" cy="200" rx="70" ry="54.6" fill="none" stroke="#0B2A4F" stroke-width="7"/>
+<g stroke="#0B2A4F" stroke-width="10" stroke-linecap="round">
+<path d="M200 200 L200.0 90.8"/>
+<path d="M200 200 L321.2 145.4"/>
+<path d="M200 200 L321.2 254.6"/>
+<path d="M200 200 L200.0 309.2"/>
+<path d="M200 200 L78.8 254.6"/>
+<path d="M200 200 L78.8 145.4"/>
+</g>
+<rect x="181.0" y="71.8" width="38" height="38" rx="3" fill="#12B3B0"/>
+<rect x="302.2" y="126.4" width="38" height="38" rx="3" fill="#12B3B0"/>
+<rect x="302.2" y="235.6" width="38" height="38" rx="3" fill="#12B3B0"/>
+<rect x="181.0" y="290.2" width="38" height="38" rx="3" fill="#12B3B0"/>
+<rect x="59.8" y="235.6" width="38" height="38" rx="3" fill="#12B3B0"/>
+<rect x="59.8" y="126.4" width="38" height="38" rx="3" fill="#12B3B0"/>
+<circle cx="200.0" cy="145.4" r="19" fill="#F5B63F"/>
+<circle cx="260.6" cy="172.7" r="19" fill="#F5B63F"/>
+<circle cx="260.6" cy="227.3" r="19" fill="#F5B63F"/>
+<circle cx="200.0" cy="254.6" r="19" fill="#F5B63F"/>
+<circle cx="139.4" cy="227.3" r="19" fill="#F5B63F"/>
+<circle cx="139.4" cy="172.7" r="19" fill="#F5B63F"/>
+<circle cx="200" cy="200" r="28" fill="#F5B63F"/>
+</svg>

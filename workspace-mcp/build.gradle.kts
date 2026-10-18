@@ -1,0 +1,60 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    kotlin("multiplatform")
+    id("com.vanniktech.maven.publish")
+}
+
+kotlin {
+    jvmToolchain(17)
+    jvm {
+        compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
+    }
+    js(IR) {
+        nodejs()
+        binaries.library()
+    }
+    sourceSets {
+        commonMain.dependencies {
+            api(project(":workspace-runtime"))
+            implementation(libs.kotlinx.serialization.json)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.json.schema.ref.parser.kmp)
+        }
+    }
+}
+
+val hasSigningCredentials = sequenceOf(
+    "signingInMemoryKey", "signingKey", "signing.secretKeyRingFile",
+).any { !providers.gradleProperty(it).orNull.isNullOrBlank() }
+
+mavenPublishing {
+    publishToMavenCentral()
+    if (hasSigningCredentials) signAllPublications()
+    pom {
+        name.set("ZenWave Workspace MCP Adapter")
+        description.set("Thin Model Context Protocol tool adapter for the ZenWave Workspace Query API")
+        url.set("https://github.com/ZenWave360/zenwave-architecture")
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://opensource.org/licenses/MIT")
+            }
+        }
+        developers {
+            developer {
+                id.set("ivangsa")
+                name.set("Ivan Garcia Sainz-Aja")
+                email.set("ivangsa@gmail.com")
+            }
+        }
+        scm {
+            connection.set("scm:git:git://github.com/ZenWave360/zenwave-architecture.git")
+            developerConnection.set("scm:git:ssh://github.com/ZenWave360/zenwave-architecture.git")
+            url.set("https://github.com/ZenWave360/zenwave-architecture")
+        }
+    }
+}

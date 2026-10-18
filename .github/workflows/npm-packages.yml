@@ -1,0 +1,21 @@
+name: Build npm bootstrap tarballs
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "npm bootstrap version on the current Maven snapshot train"
+        required: true
+        type: string
+        default: "1.0.0-next.0"
+
+permissions:
+  contents: read
+
+jobs:
+  npm-packages:
+    uses: ZenWave360/release-workflows/.github/workflows/npm-packages.yml@e1f06ae5734cf790487acfa1f48f39f3e78aef39
+    with:
+      ref: ${{ github.sha }}
+      version: ${{ inputs.version }}
+      publish: false

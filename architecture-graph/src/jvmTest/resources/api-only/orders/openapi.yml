@@ -1,0 +1,9 @@
+openapi: 3.0.3
+info: { title: Orders API, version: 1.0.0 }
+paths:
+  /orders:
+    post:
+      operationId: placeOrder
+      summary: Place an order
+      responses:
+        '202': { description: Accepted }

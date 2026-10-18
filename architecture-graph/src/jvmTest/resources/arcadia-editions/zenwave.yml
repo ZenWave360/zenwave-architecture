@@ -1,0 +1,22 @@
+config:
+  sources:
+    workspace:
+      basePathExpression: "${owner.repository}"
+domains:
+  sales:
+    repository: architecture
+    artifacts:
+      - { artifactId: place-order-flow, type: zfl, path: place-order.zfl, version: 1.0.0 }
+    subdomains:
+      ordering:
+        services:
+          order-service:
+            repository: orders
+            consumers: [notifications#notifications-client]
+            artifacts:
+              - { artifactId: orders-model, type: zdl, path: model.zdl, version: 1.0.0 }
+              - { artifactId: orders-events, type: asyncapi, path: asyncapi.yml, version: 1.0.0 }
+          notifications:
+            repository: notifications
+            artifacts:
+              - { artifactId: notifications-client, type: asyncapi-client, path: client.yml, version: 1.0.0 }
