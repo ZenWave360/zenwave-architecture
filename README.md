@@ -11,9 +11,9 @@ ZenWave Architecture is the architecture contract shared by ZenWave tools. A han
 
 - Versioned schema: `https://schemas.zenwave360.io/zenwave-architecture/1.0/schema.json`
 - Latest schema: `https://schemas.zenwave360.io/zenwave-architecture/latest/schema.json`
-- Detailed authoring guide: [docs/source-resolution-guide.md](docs/source-resolution-guide.md)
-- Normative source-resolution specification: [docs/source-resolution-specification.md](docs/source-resolution-specification.md)
-- Workspace diagnostic codes: [docs/diagnostics.md](docs/diagnostics.md)
+- Detailed authoring guide: [source-resolution-guide.md](https://github.com/ZenWave360/zenwave-specs/blob/main/zenwave-architecture/source-resolution-guide.md)
+- Normative source-resolution specification: [source-resolution-specification.md](https://github.com/ZenWave360/zenwave-specs/blob/main/zenwave-architecture/source-resolution-specification.md)
+- Workspace diagnostic codes: [diagnostics.md](https://github.com/ZenWave360/zenwave-specs/blob/main/zenwave-architecture/diagnostics.md)
 
 ## Complete manifest
 
