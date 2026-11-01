@@ -100,7 +100,7 @@ The Artifactory URL above comes from its preset `contentUrlExpression`; declare 
 
 ## Runtime values
 
-Static `config.properties` substitution runs first. It cannot override canonical values or source-local `${server}`. Runtime interpolation is literal: no functions, conditionals, nested expressions, or fallback syntax are supported.
+Static `config.properties` substitution runs first. It cannot override canonical values or source-local `${server}`. Runtime interpolation supports `${a|b|c}`, selecting the first non-blank variable. Artifacts may declare an optional `releaseGroup`; `${artifact.releaseGroup|artifact.type}` selects that group or the original type for a configured release URL. See the [source-resolution guide](https://github.com/ZenWave360/zenwave-specs/blob/main/zenwave-architecture/source-resolution-guide.md#shared-artifact-release-tags) for the complete contract and example.
 
 | Variable | Value |
 | --- | --- |

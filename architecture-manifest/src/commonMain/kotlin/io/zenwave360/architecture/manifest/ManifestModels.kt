@@ -158,6 +158,7 @@ data class ManifestArtifact(
     val type: String,
     val path: String,
     val version: String? = null,
+    val releaseGroup: String? = null,
 ) {
     /**
      * Effective `${version}` for this artifact: its own declared version, with no inheritance from
@@ -210,6 +211,7 @@ data class ManifestResolutionContext(
     val repository: String? = null,
     val ownerId: String = serviceId,
     val ownerRepository: String? = repository,
+    val properties: Map<String, String> = emptyMap(),
 ) {
     fun variables(): Map<String, String> = buildMap {
         put("domain.id", domainId)
@@ -223,6 +225,8 @@ data class ManifestResolutionContext(
         serviceVersion.nonBlankOrNull()?.let { put("service.version", it) }
         put("content.path", contentPath)
         artifact?.let {
+            put("artifact.type", it.type)
+            it.releaseGroup?.let { group -> put("artifact.releaseGroup", group) }
             put("artifact.path", it.path)
             put("artifact.pathWithoutExtension", it.pathWithoutExtension)
             put("artifact.fileName", it.fileName)
