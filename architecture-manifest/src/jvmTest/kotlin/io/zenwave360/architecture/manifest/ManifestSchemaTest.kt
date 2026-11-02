@@ -13,6 +13,20 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ManifestSchemaTest {
+    @Test
+    fun releaseGroupIsAnOptionalStringInBothSchemas() {
+        listOf("", ", releaseGroup: asyncapi-all", ", releaseGroup: ''", ", releaseGroup: '   '").forEach { field ->
+            val yaml = "domains: { sales: { artifacts: [{ type: asyncapi, path: api.yml, version: 1$field }] } }"
+            assertValid(v1Schema(), yaml)
+            assertValid(latestSchema(), yaml)
+        }
+        listOf("42", "null", "[]", "{}").forEach { value ->
+            val yaml = "domains: { sales: { artifacts: [{ type: asyncapi, path: api.yml, version: 1, releaseGroup: $value }] } }"
+            assertInvalid(v1Schema(), yaml)
+            assertInvalid(latestSchema(), yaml)
+        }
+    }
+
     private val root = sequenceOf(
         File(System.getProperty("user.dir")),
         File(System.getProperty("user.dir")).parentFile,

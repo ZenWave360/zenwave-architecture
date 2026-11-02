@@ -5,6 +5,11 @@ on:
     branches: [develop, next]
   workflow_dispatch:
     inputs:
+      publish-snapshots:
+        description: "Also publish the SNAPSHOT to Maven Central (snapshots always go to zenwave360/maven-snapshots)"
+        required: false
+        type: boolean
+        default: false
       publishNpm:
         description: "Publish all four npm packages to next (disable to download tarballs only)"
         required: false
@@ -21,8 +26,11 @@ concurrency:
 
 jobs:
   publish-snapshot:
-    uses: ZenWave360/release-workflows/.github/workflows/publish-snapshots-gradle.yml@e1f06ae5734cf790487acfa1f48f39f3e78aef39
+    # Pilot for git-maven-publisher snapshots (zenwave360/maven-snapshots, branch main); back to @main once merged there.
+    uses: ZenWave360/release-workflows/.github/workflows/publish-snapshots-gradle.yml@feature/git-snapshots
     with:
+      publish-snapshots: ${{ github.event_name == 'workflow_dispatch' && inputs.publish-snapshots }}
+      publish-git-snapshots: true
       java-version: "21"
       kover-xml-files: "./architecture-manifest/build/reports/kover/report.xml"
       publish-npm: false
@@ -31,6 +39,7 @@ jobs:
       CENTRAL_TOKEN: ${{ secrets.CENTRAL_TOKEN }}
       SIGN_KEY: ${{ secrets.SIGN_KEY }}
       SIGN_KEY_PASS: ${{ secrets.SIGN_KEY_PASS }}
+      GIT_PUBLISHER_TOKEN: ${{ secrets.GIT_PUBLISHER_TOKEN }}
 
   npm-packages:
     needs: publish-snapshot

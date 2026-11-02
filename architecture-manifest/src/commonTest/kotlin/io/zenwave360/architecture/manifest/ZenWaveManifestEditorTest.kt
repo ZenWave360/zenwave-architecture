@@ -10,6 +10,33 @@ import kotlin.test.assertTrue
 class ZenWaveManifestEditorTest {
 
     @Test
+    fun releaseGroupRoundTripsThroughExistingScalarEditor() = runTest {
+        val uri = "file:///architecture/zenwave-architecture.yml"
+        val original = """
+            domains:
+              orders:
+                artifacts:
+                  - type: asyncapi
+                    path: events.yml
+                    version: '1.0.0'
+                    releaseGroup: 'old-group' # released together
+        """.trimIndent()
+        val result = ZenWaveManifestEditor(MapDocumentReader(mapOf(uri to original))).updateScalars(
+            uri,
+            listOf(ManifestScalarUpdate(
+                ManifestScalarTarget.Artifact("orders", "events.yml"), "releaseGroup", "asyncapi-all",
+            )),
+        )
+        assertEquals(original.replace("'old-group'", "'asyncapi-all'"), result.documents.single().updatedText)
+        assertEquals("old-group", result.changes.single().previousValue)
+        val artifact = result.manifest.domains.single().artifacts.single()
+        assertEquals("asyncapi-all", artifact.releaseGroup)
+        assertEquals("asyncapi", artifact.type)
+        assertEquals("1.0.0", artifact.version)
+        assertEquals("events.yml", artifact.path)
+    }
+
+    @Test
     fun updatesTheCompleteAsyncapiAllSelectionTogether() = runTest {
         val uri = "file:///architecture/zenwave-architecture.yml"
         val reader = MapDocumentReader(

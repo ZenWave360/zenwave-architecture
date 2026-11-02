@@ -33,7 +33,7 @@
     },
     "runtimeExpression": {
       "allOf": [{ "$ref": "#/$defs/nonBlank" }],
-      "description": "Literal expression using owner.id, explicit owner.repository, domain.id, subdomain.id, service.id, explicit service.repository, domain.version, subdomain.version, service.version, artifact.version, artifact.path, artifact.pathWithoutExtension, explicit artifact.name, artifact.fileName, artifact.fileNameWithoutExtension, content.path, service.docs[key], groupId, artifactId, effective version, or source-local server."
+      "description": "Literal expression using owner.id, explicit owner.repository, domain.id, subdomain.id, service.id, explicit service.repository, domain.version, subdomain.version, service.version, artifact.version, artifact.type, explicit artifact.releaseGroup, artifact.path, artifact.pathWithoutExtension, explicit artifact.name, artifact.fileName, artifact.fileNameWithoutExtension, content.path, service.docs[key], groupId, artifactId, effective version, or source-local server. Pipe alternatives such as ${artifact.releaseGroup|artifact.type} select the first non-blank variable before provider encoding."
     },
     "config": {
       "type": "object",
@@ -263,6 +263,7 @@
       "properties": {
         "name": { "$ref": "#/$defs/nonBlank" },
         "artifactId": { "$ref": "#/$defs/nonBlank" },
+        "releaseGroup": { "type": "string", "description": "Explicit logical release group; omitted values remain absent. Use ${artifact.releaseGroup|artifact.type} for a type fallback." },
         "type": { "$ref": "#/$defs/nonBlank" },
         "path": { "$ref": "#/$defs/nonBlank" },
         "version": { "$ref": "#/$defs/version" }

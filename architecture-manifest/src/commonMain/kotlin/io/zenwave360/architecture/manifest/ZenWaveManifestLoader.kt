@@ -236,16 +236,16 @@ class ZenWaveManifestLoader(
         owner: ManifestArtifactOwner,
         artifact: ManifestArtifact,
     ): ManifestResolutionContext {
-        val base = baseContext(owner, artifact, artifact.path)
+        val base = baseContext(owner, artifact, artifact.path).copy(properties = manifest.config.properties)
         val coordinates = resolveCoordinates(manifest, base, owner, artifact)
         return base.copy(groupId = coordinates.groupId, artifactId = coordinates.artifactId)
     }
 
     fun documentResolutionContext(
-        @Suppress("UNUSED_PARAMETER") manifest: ZenWaveManifest,
+        manifest: ZenWaveManifest,
         service: ManifestService,
         path: String,
-    ): ManifestResolutionContext = baseContext(service, null, path)
+    ): ManifestResolutionContext = baseContext(service, null, path).copy(properties = manifest.config.properties)
 
     fun buildArtifactCandidates(
         manifest: ZenWaveManifest,
@@ -267,7 +267,7 @@ class ZenWaveManifestLoader(
             owner,
             artifact,
             artifact.path,
-            baseContext(owner, artifact, artifact.path),
+            baseContext(owner, artifact, artifact.path).copy(properties = manifest.config.properties),
             options,
         )
     }
@@ -358,7 +358,7 @@ class ZenWaveManifestLoader(
             val direct = directResource(resourcePath)
             return direct to loadText(direct.uri)
         }
-        val context = baseContext(owner, artifact, resourcePath)
+        val context = baseContext(owner, artifact, resourcePath).copy(properties = manifest.config.properties)
         val candidates = buildResourceCandidates(manifest, owner, artifact, resourcePath, context, options)
         var lastError: Throwable? = null
         for (candidate in candidates) {
@@ -546,16 +546,20 @@ class ZenWaveManifestLoader(
         server: String? = null,
         encode: Boolean = true,
     ): String {
-        val invalidDocLookup = PLACEHOLDER.findAll(expression).map { it.groupValues[1] }
+        val invalidDocLookup = PLACEHOLDER.findAll(expression)
+            .flatMap { ManifestVariableInterpolator.alternatives(it.groupValues[1]).asSequence() }
             .firstOrNull { it.startsWith("service.docs") && !DOC_LOOKUP.matches(it) }
         if (invalidDocLookup != null) {
             throw ManifestResolutionException("Source '$source' expression '$expression' has invalid document lookup: $invalidDocLookup")
         }
-        val variables = context.variables().mapValues { (name, value) ->
-            if (!encode) value else encodeRuntimeValue(source, name, value)
-        }.toMutableMap()
+        val variables = context.properties.filterKeys { !isRuntimeVariable(it) }.toMutableMap()
+        variables.putAll(context.variables())
         server.nonBlankOrNull()?.let { variables["server"] = it.trimEnd('/') }
-        val interpolation = ManifestVariableInterpolator.interpolate(expression, variables)
+        val interpolation = ManifestVariableInterpolator.interpolate(
+            expression,
+            resolve = { variables[it] },
+            transform = { name, value -> if (encode) encodeRuntimeValue(source, name, value) else value },
+        )
         if (interpolation.unresolvedVariables.isNotEmpty()) {
             throw ManifestResolutionException(
                 "Source '$source' expression '$expression' has unresolved runtime variables: " +
@@ -593,17 +597,29 @@ class ZenWaveManifestLoader(
         context: ManifestResolutionContext,
         expression: String,
     ): ManifestResolutionContext {
-        val needsGroupId = expressionSelects(expression, "groupId")
-        val needsArtifactId = expressionSelects(expression, "artifactId")
-        return context.copy(
-            groupId = if (needsGroupId) resolveGroupId(manifest, owner, context) else context.groupId,
-            artifactId = if (needsArtifactId) {
-                artifact?.let { resolveArtifactId(manifest, it, context) }
-                    ?: throw ManifestResolutionException("Required coordinate 'artifactId' is unresolved")
-            } else {
-                context.artifactId
-            },
-        )
+        var selected = context
+        PLACEHOLDER.findAll(expression).forEach { match ->
+            val body = match.groupValues[1]
+            ManifestVariableInterpolator.alternatives(body).firstOrNull { name ->
+                fun coordinate(resolve: () -> String): String? =
+                    if ('|' in body) try { resolve() } catch (_: ManifestResolutionException) { null }
+                    else resolve()
+                when (name) {
+                    "groupId" -> if (selected.groupId == null) {
+                        selected = selected.copy(groupId = coordinate { resolveGroupId(manifest, owner, selected) })
+                    }
+                    "artifactId" -> if (selected.artifactId == null) {
+                        selected = selected.copy(artifactId = coordinate {
+                            artifact?.let { resolveArtifactId(manifest, it, selected) }
+                                ?: throw ManifestResolutionException("Required coordinate 'artifactId' is unresolved")
+                        })
+                    }
+                }
+                val value = selected.variables()[name] ?: selected.properties[name]
+                value != null && ('|' !in body || value.isNotBlank())
+            }
+        }
+        return selected
     }
 
     private fun resolveGroupId(
@@ -642,9 +658,6 @@ class ZenWaveManifestLoader(
         artifact.artifactId.nonBlankOrNull()
             ?: interpolateRuntime("coordinates", manifest.config.artifactIdExpression, context, encode = false)
         ).requireCoordinate("artifactId")
-
-    private fun expressionSelects(expression: String, name: String): Boolean =
-        PLACEHOLDER.findAll(expression).any { it.groupValues[1] == name }
 
     private fun baseContext(service: ManifestService, artifact: ManifestArtifact?, contentPath: String) =
         ManifestResolutionContext(
@@ -850,6 +863,7 @@ class ZenWaveManifestLoader(
             type = type,
             path = expandStatic(rawPath, "$ownerRef.artifacts.path", properties, diagnostics, allowRuntime = false),
             version = version,
+            releaseGroup = artifact["releaseGroup"] as? String,
         )
     }
 
@@ -999,7 +1013,8 @@ class ZenWaveManifestLoader(
         location: String,
         diagnostics: MutableList<ManifestDiagnostic>,
     ) {
-        val recursive = PLACEHOLDER.findAll(expression).map { it.groupValues[1] }
+        val recursive = PLACEHOLDER.findAll(expression)
+            .flatMap { ManifestVariableInterpolator.alternatives(it.groupValues[1]).asSequence() }
             .filter { it == "groupId" || it == "artifactId" }.toList()
         if (recursive.isNotEmpty()) diagnostics += validationDiagnostic(
             "Coordinate expression must not reference ${recursive.joinToString(", ")}",
@@ -1039,8 +1054,15 @@ class ZenWaveManifestLoader(
         diagnostics: MutableList<ManifestDiagnostic>,
         allowRuntime: Boolean,
     ): String {
-        val interpolation = ManifestVariableInterpolator.interpolate(rawValue, properties)
-        interpolation.unresolvedVariables.filterNot { allowRuntime && isRuntimeVariable(it) }.forEach { variable ->
+        val interpolation = ManifestVariableInterpolator.interpolate(
+            rawValue,
+            resolve = { properties[it] },
+            defer = { expression -> allowRuntime &&
+                ManifestVariableInterpolator.alternatives(expression).any { isRuntimeVariable(it) } },
+        )
+        interpolation.unresolvedVariables.filterNot { expression -> allowRuntime &&
+            ManifestVariableInterpolator.alternatives(expression).any { isRuntimeVariable(it) }
+        }.forEach { variable ->
             diagnostics += ManifestDiagnostic(
                 "Unresolved static variable '$variable'",
                 code = "unresolved-static-variable",
@@ -1163,7 +1185,7 @@ class ZenWaveManifestLoader(
         val CANONICAL_RUNTIME_VARIABLES = setOf(
             "domain.id", "subdomain.id", "service.id", "service.repository", "owner.id", "owner.repository",
             "domain.version", "subdomain.version",
-            "service.version", "artifact.version", "artifact.path", "artifact.pathWithoutExtension", "artifact.name",
+            "service.version", "artifact.version", "artifact.type", "artifact.releaseGroup", "artifact.path", "artifact.pathWithoutExtension", "artifact.name",
             "artifact.fileName", "artifact.fileNameWithoutExtension", "content.path",
             "groupId", "artifactId", "version",
         )
