@@ -115,10 +115,12 @@ class ManifestConsumerIndex private constructor(
                     val selector = reference.artifactSelector ?: return@consumerLoop
                     val consumerService = resolveService(manifest, providerService, reference.serviceReference)
                     if (consumerService == null) {
-                        diagnostics += warning(
-                            "Consumer service '${reference.serviceReference}' cannot be resolved",
-                            "unresolved-consumer-reference",
-                            location,
+                        // diagnostics.md: unresolved-consumer-reference is an error.
+                        diagnostics += ManifestDiagnostic(
+                            message = "Consumer service '${reference.serviceReference}' cannot be resolved",
+                            severity = ManifestDiagnosticSeverity.ERROR,
+                            code = "unresolved-consumer-reference",
+                            location = location,
                         )
                         return@consumerLoop
                     }
