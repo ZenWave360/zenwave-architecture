@@ -57,6 +57,22 @@ class ManifestConsumersTest {
     }
 
     @Test
+    fun unresolvedConsumerReferenceIsAnErrorWhicheverLayerFindsIt() = runTest {
+        val unresolved = parse(consumers = listOf("missing.service#asyncapi-client"))
+        assertEquals(
+            listOf(ManifestDiagnosticSeverity.ERROR),
+            unresolved.diagnostics.filter { it.code == "unresolved-consumer-reference" }.map { it.severity },
+        )
+
+        // A manifest that did not go through the loader's diagnosis still gets the spec'd severity.
+        val index = ManifestConsumerIndex.build(unresolved.copy(diagnostics = emptyList()))
+        assertEquals(
+            listOf(ManifestDiagnosticSeverity.ERROR),
+            index.diagnostics.filter { it.code == "unresolved-consumer-reference" }.map { it.severity },
+        )
+    }
+
+    @Test
     fun artifactIdWinsBeforeTypeFallback() = runTest {
         val manifest = parse(
             consumers = listOf("orders.checkout.orders-checkout#asyncapi-client"),
