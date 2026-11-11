@@ -14,6 +14,8 @@ class ManifestResourceLoadException(
     cause: Throwable? = null,
     /** What happened to the last candidate tried, credentials removed; null when no candidate was tried. */
     val finalError: String? = null,
+    /** What happened to each candidate, in the order of [candidates], credentials removed. */
+    val candidateErrors: List<String> = emptyList(),
 ) : IllegalStateException(message, cause)
 
 /**
@@ -205,6 +207,7 @@ class ZenWaveManifestLoader(
             errorMessage = error.message ?: "Cannot load artifact '${artifact.path}'",
             candidates = error.candidates,
             finalError = error.finalError,
+            candidateErrors = error.candidateErrors,
         )
     } catch (error: Exception) {
         ManifestResourceLoadResult(
@@ -436,6 +439,7 @@ class ZenWaveManifestLoader(
             .let { if (givenVersion != null) it.copy(version = givenVersion.value) else it }
         val candidates = buildResourceCandidates(manifest, owner, artifact, resourcePath, context, options)
         var lastError: Throwable? = null
+        val candidateErrors = mutableListOf<String>()
         for (candidate in candidates) {
             try {
                 val text = candidate.archiveEntry?.let { entry ->
@@ -451,6 +455,7 @@ class ZenWaveManifestLoader(
                 return candidate to text
             } catch (error: Throwable) {
                 lastError = error
+                candidateErrors += redactErrorMessage(error.message ?: error::class.simpleName.orEmpty())
             }
         }
         val safeCandidates = candidates.map { it.copy(uri = redactUri(it.uri)) }
@@ -471,6 +476,7 @@ class ZenWaveManifestLoader(
             safeCandidates,
             cause = null,
             finalError = finalError,
+            candidateErrors = candidateErrors,
         )
     }
 
@@ -1269,7 +1275,7 @@ class ZenWaveManifestLoader(
     }
 
     private fun redactUri(uri: String): String = uri
-        .replace(Regex("""(://)[^/@\s]+@"""), "$1<redacted>@")
+        .replace(Regex("""(://)[^/?#\s]*@"""), "$1<redacted>@")
         .replace(Regex("""([?&][^=&#]+)=([^&#]*)"""), "$1=<redacted>")
 
     private fun redactErrorMessage(message: String): String = redactUri(message)
