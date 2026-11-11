@@ -72,10 +72,14 @@ class ManifestBrowserSmokeTest {
     private companion object {
         val MANIFEST = """
             config:
-              contentResolution: [workspace]
+              contentResolution: [workspace, git]
               sources:
                 workspace:
                   basePathExpression: "${'$'}{service.id}"
+                git:
+                  provider: generic
+                  server: https://architecture.example.com
+                  contentUrlExpression: "${'$'}{server}/${'$'}{service.id}/${'$'}{content.path}"
             domains:
               commerce:
                 ${'$'}ref: "domains/commerce.yml"
