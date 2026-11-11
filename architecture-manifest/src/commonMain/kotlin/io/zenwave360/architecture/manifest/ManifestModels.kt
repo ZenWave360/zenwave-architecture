@@ -287,6 +287,8 @@ data class ManifestResourceLoadResult(
     val candidates: List<ManifestResolvedResource> = emptyList(),
     /** On a failure of the ordered sources: what happened to the last candidate, credentials removed. */
     val finalError: String? = null,
+    /** What happened to each of [candidates], in order, credentials removed. */
+    val candidateErrors: List<String> = emptyList(),
 ) {
     val successful: Boolean
         get() = content != null
