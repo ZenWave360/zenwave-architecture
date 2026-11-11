@@ -12,6 +12,8 @@ class ManifestResourceLoadException(
     message: String,
     val candidates: List<ManifestResolvedResource>,
     cause: Throwable? = null,
+    /** What happened to the last candidate tried, credentials removed; null when no candidate was tried. */
+    val finalError: String? = null,
 ) : IllegalStateException(message, cause)
 
 /**
@@ -197,6 +199,13 @@ class ZenWaveManifestLoader(
             options,
         )
         ManifestResourceLoadResult(artifact.path, resource, content)
+    } catch (error: ManifestResourceLoadException) {
+        ManifestResourceLoadResult(
+            path = artifact.path,
+            errorMessage = error.message ?: "Cannot load artifact '${artifact.path}'",
+            candidates = error.candidates,
+            finalError = error.finalError,
+        )
     } catch (error: Exception) {
         ManifestResourceLoadResult(
             path = artifact.path,
@@ -461,6 +470,7 @@ class ZenWaveManifestLoader(
             },
             safeCandidates,
             cause = null,
+            finalError = finalError,
         )
     }
 
