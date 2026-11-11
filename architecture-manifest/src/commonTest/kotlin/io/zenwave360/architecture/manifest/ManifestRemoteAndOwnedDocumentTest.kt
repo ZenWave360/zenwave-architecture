@@ -168,4 +168,23 @@ class ManifestRemoteAndOwnedDocumentTest {
         }
         assertTrue("version" in error.message.orEmpty(), error.message)
     }
+
+    @Test
+    fun aFailedLoadRecordsWhatHappenedToEachCandidateWithCredentialsRemoved() = runTest {
+        val io = object : DocumentLoader {
+            override fun canLoad(uri: String): Boolean = true
+            override suspend fun load(uri: String): String =
+                if (uri.startsWith("file:")) error("HTTP 403 for $uri") else error("HTTP 404 for http://alice:pre@SECRETTAIL@host.example/x?token=abc")
+        }
+        val loader = ZenWaveManifestLoader(listOf(io), archiveEntryLoader = null)
+        val manifest = loader.parse(local, manifestText("[workspace, git]"))
+        val service = manifest.services.single()
+        val result = loader.loadArtifactResult(manifest, service, service.artifacts.single())
+
+        assertEquals(listOf(ManifestSourceName.WORKSPACE, ManifestSourceName.GIT), result.candidates.map { it.source })
+        assertEquals(2, result.candidateErrors.size)
+        assertTrue(result.candidateErrors[0].startsWith("HTTP 403"), result.candidateErrors.toString())
+        assertTrue(result.candidateErrors[1].startsWith("HTTP 404"), result.candidateErrors.toString())
+        assertTrue("SECRETTAIL" !in result.candidateErrors.toString() && "abc" !in result.candidateErrors.toString(), result.candidateErrors.toString())
+    }
 }

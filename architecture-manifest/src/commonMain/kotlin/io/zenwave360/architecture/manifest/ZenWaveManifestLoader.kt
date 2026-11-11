@@ -12,6 +12,10 @@ class ManifestResourceLoadException(
     message: String,
     val candidates: List<ManifestResolvedResource>,
     cause: Throwable? = null,
+    /** What happened to the last candidate tried, credentials removed; null when no candidate was tried. */
+    val finalError: String? = null,
+    /** What happened to each candidate, in the order of [candidates], credentials removed. */
+    val candidateErrors: List<String> = emptyList(),
 ) : IllegalStateException(message, cause)
 
 /**
@@ -197,6 +201,14 @@ class ZenWaveManifestLoader(
             options,
         )
         ManifestResourceLoadResult(artifact.path, resource, content)
+    } catch (error: ManifestResourceLoadException) {
+        ManifestResourceLoadResult(
+            path = artifact.path,
+            errorMessage = error.message ?: "Cannot load artifact '${artifact.path}'",
+            candidates = error.candidates,
+            finalError = error.finalError,
+            candidateErrors = error.candidateErrors,
+        )
     } catch (error: Exception) {
         ManifestResourceLoadResult(
             path = artifact.path,
@@ -427,6 +439,7 @@ class ZenWaveManifestLoader(
             .let { if (givenVersion != null) it.copy(version = givenVersion.value) else it }
         val candidates = buildResourceCandidates(manifest, owner, artifact, resourcePath, context, options)
         var lastError: Throwable? = null
+        val candidateErrors = mutableListOf<String>()
         for (candidate in candidates) {
             try {
                 val text = candidate.archiveEntry?.let { entry ->
@@ -442,6 +455,7 @@ class ZenWaveManifestLoader(
                 return candidate to text
             } catch (error: Throwable) {
                 lastError = error
+                candidateErrors += redactErrorMessage(error.message ?: error::class.simpleName.orEmpty())
             }
         }
         val safeCandidates = candidates.map { it.copy(uri = redactUri(it.uri)) }
@@ -461,6 +475,8 @@ class ZenWaveManifestLoader(
             },
             safeCandidates,
             cause = null,
+            finalError = finalError,
+            candidateErrors = candidateErrors,
         )
     }
 
@@ -732,6 +748,20 @@ class ZenWaveManifestLoader(
                 ownerId = owner.id,
                 ownerRepository = owner.repository,
             )
+            is ManifestSubdomain -> ManifestResolutionContext(
+                domainId = owner.domainId,
+                subdomainId = owner.id,
+                serviceId = "",
+                domainVersion = owner.domainVersion,
+                subdomainVersion = owner.version,
+                serviceVersion = null,
+                artifact = artifact,
+                contentPath = contentPath,
+                docs = emptyMap(),
+                version = artifact?.resolvedVersion ?: owner.documentVersion(),
+                ownerId = owner.id,
+                ownerRepository = owner.repository,
+            )
         }
 
     private fun resolveArtifactId(
@@ -864,6 +894,9 @@ class ZenWaveManifestLoader(
     ): ManifestSubdomain {
         val subdomainId = value["id"]?.toString().nonBlankOrNull() ?: subdomainKey
         val subdomainVersion = value["version"].stringValue()
+        val ownerRef = "$domainKey/$subdomainKey"
+        val docs = parseDocs(properties, diagnostics, ownerRef, value)
+        val artifacts = parseArtifacts(properties, diagnostics, ownerRef, value)
         val services = value.mapAt("services").map { (serviceKey, serviceValue) ->
             parseService(
                 properties, diagnostics, domainKey, domainId, domainVersion,
@@ -871,13 +904,20 @@ class ZenWaveManifestLoader(
             ).also(allServices::add)
         }
         return ManifestSubdomain(
-            subdomainKey,
-            subdomainId,
-            subdomainVersion,
-            value["name"]?.toString(),
-            value["description"]?.toString(),
-            services,
-            value.listAt("aliases").mapNotNull { it?.toString().nonBlankOrNull() },
+            key = subdomainKey,
+            id = subdomainId,
+            version = subdomainVersion,
+            name = value["name"]?.toString(),
+            description = value["description"]?.toString(),
+            services = services,
+            aliases = value.listAt("aliases").mapNotNull { it?.toString().nonBlankOrNull() },
+            domainKey = domainKey,
+            domainId = domainId,
+            domainVersion = domainVersion,
+            repository = (value["repository"] as? String).nonBlankOrNull(),
+            groupId = (value["groupId"] as? String).nonBlankOrNull(),
+            artifacts = artifacts,
+            docs = docs,
         )
     }
 
@@ -1235,7 +1275,7 @@ class ZenWaveManifestLoader(
     }
 
     private fun redactUri(uri: String): String = uri
-        .replace(Regex("""(://)[^/@\s]+@"""), "$1<redacted>@")
+        .replace(Regex("""(://)[^/?#\s]*@"""), "$1<redacted>@")
         .replace(Regex("""([?&][^=&#]+)=([^&#]*)"""), "$1=<redacted>")
 
     private fun redactErrorMessage(message: String): String = redactUri(message)

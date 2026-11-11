@@ -14,6 +14,19 @@ import kotlin.test.assertTrue
 
 class ManifestSchemaTest {
     @Test
+    fun subdomainsAcceptDocsArtifactsRepositoryAndGroupIdInBothSchemas() {
+        val yaml = "domains: { sales: { subdomains: { eu: { repository: r, groupId: g, " +
+            "docs: { summary: docs/SUMMARY.md }, artifacts: [{ type: zfl, path: a.zfl, version: 1 }] } } } }"
+        assertValid(v1Schema(), yaml)
+        assertValid(latestSchema(), yaml)
+        val blankDoc = "domains: { sales: { subdomains: { eu: { docs: { summary: '' } } } } }"
+        assertInvalid(v1Schema(), blankDoc)
+        assertInvalid(latestSchema(), blankDoc)
+        val noVersion = "domains: { sales: { subdomains: { eu: { artifacts: [{ type: zfl, path: a.zfl }] } } } }"
+        assertInvalid(v1Schema(), noVersion)
+    }
+
+    @Test
     fun releaseGroupIsAnOptionalStringInBothSchemas() {
         listOf("", ", releaseGroup: asyncapi-all", ", releaseGroup: ''", ", releaseGroup: '   '").forEach { field ->
             val yaml = "domains: { sales: { artifacts: [{ type: asyncapi, path: api.yml, version: 1$field }] } }"
