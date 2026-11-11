@@ -742,6 +742,20 @@ class ZenWaveManifestLoader(
                 ownerId = owner.id,
                 ownerRepository = owner.repository,
             )
+            is ManifestSubdomain -> ManifestResolutionContext(
+                domainId = owner.domainId,
+                subdomainId = owner.id,
+                serviceId = "",
+                domainVersion = owner.domainVersion,
+                subdomainVersion = owner.version,
+                serviceVersion = null,
+                artifact = artifact,
+                contentPath = contentPath,
+                docs = emptyMap(),
+                version = artifact?.resolvedVersion ?: owner.documentVersion(),
+                ownerId = owner.id,
+                ownerRepository = owner.repository,
+            )
         }
 
     private fun resolveArtifactId(
@@ -874,6 +888,9 @@ class ZenWaveManifestLoader(
     ): ManifestSubdomain {
         val subdomainId = value["id"]?.toString().nonBlankOrNull() ?: subdomainKey
         val subdomainVersion = value["version"].stringValue()
+        val ownerRef = "$domainKey/$subdomainKey"
+        val docs = parseDocs(properties, diagnostics, ownerRef, value)
+        val artifacts = parseArtifacts(properties, diagnostics, ownerRef, value)
         val services = value.mapAt("services").map { (serviceKey, serviceValue) ->
             parseService(
                 properties, diagnostics, domainKey, domainId, domainVersion,
@@ -881,13 +898,20 @@ class ZenWaveManifestLoader(
             ).also(allServices::add)
         }
         return ManifestSubdomain(
-            subdomainKey,
-            subdomainId,
-            subdomainVersion,
-            value["name"]?.toString(),
-            value["description"]?.toString(),
-            services,
-            value.listAt("aliases").mapNotNull { it?.toString().nonBlankOrNull() },
+            key = subdomainKey,
+            id = subdomainId,
+            version = subdomainVersion,
+            name = value["name"]?.toString(),
+            description = value["description"]?.toString(),
+            services = services,
+            aliases = value.listAt("aliases").mapNotNull { it?.toString().nonBlankOrNull() },
+            domainKey = domainKey,
+            domainId = domainId,
+            domainVersion = domainVersion,
+            repository = (value["repository"] as? String).nonBlankOrNull(),
+            groupId = (value["groupId"] as? String).nonBlankOrNull(),
+            artifacts = artifacts,
+            docs = docs,
         )
     }
 

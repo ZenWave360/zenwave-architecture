@@ -14,7 +14,7 @@ data class ZenWaveManifest(
         servicesByRef[reference] ?: servicesById[reference]
 
     val artifactOwners: List<ManifestArtifactOwner>
-        get() = domains + services
+        get() = domains + domains.flatMap { it.subdomains } + services
 }
 
 sealed interface ManifestArtifactOwner {
@@ -105,13 +105,35 @@ data class ManifestDomain(
 
 data class ManifestSubdomain(
     val key: String,
-    val id: String,
-    val version: String? = null,
+    override val id: String,
+    override val version: String? = null,
     val name: String? = null,
     val description: String? = null,
     val services: List<ManifestService> = emptyList(),
     val aliases: List<String> = emptyList(),
-)
+    val domainKey: String = "",
+    val domainId: String = domainKey,
+    val domainVersion: String? = null,
+    override val repository: String? = null,
+    override val groupId: String? = null,
+    override val artifacts: List<ManifestArtifact> = emptyList(),
+    val docs: Map<String, String> = emptyMap(),
+) : ManifestArtifactOwner {
+    /** Owner ref `<domain key>/<subdomain key>`, the prefix of the refs of its services. */
+    override val artifactOwnerRef: String
+        get() = if (domainKey.isEmpty()) key else "$domainKey/$key"
+
+    /**
+     * Effective `${version}` for a subdomain document: the closest explicit declaration in the
+     * subdomain, domain chain. Artifacts never take part in this inheritance.
+     */
+    fun documentVersion(): String? =
+        version.nonBlankOrNull() ?: domainVersion.nonBlankOrNull()
+
+    fun findArtifact(type: String): ManifestArtifact? = artifacts.firstOrNull { it.type == type }
+
+    fun findArtifacts(type: String): List<ManifestArtifact> = artifacts.filter { it.type == type }
+}
 
 data class ManifestService(
     val domainKey: String,

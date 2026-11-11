@@ -278,6 +278,42 @@ class ZenWaveManifestEditorTest {
     }
 
     @Test
+    fun updatesASubdomainOwnerAndItsArtifactVersion() = runTest {
+        val uri = "file:///architecture/zenwave-architecture.yml"
+        val reader = MapDocumentReader(
+            mapOf(
+                uri to """
+                    domains:
+                      commerce:
+                        subdomains:
+                          fulfillment:
+                            name: Fulfillment
+                            artifacts:
+                              - type: zfl
+                                path: flows/ship.zfl
+                                version: 1.0.0
+                """.trimIndent(),
+            ),
+        )
+
+        val result = ZenWaveManifestEditor(reader).updateScalars(
+            uri,
+            listOf(
+                ManifestScalarUpdate(ManifestScalarTarget.Owner("commerce/fulfillment"), "name", "Shipping"),
+                ManifestScalarUpdate(
+                    ManifestScalarTarget.Artifact("commerce/fulfillment", "flows/ship.zfl"),
+                    "version",
+                    "2.0.0",
+                ),
+            ),
+        )
+
+        val subdomain = result.manifest.domains.single().subdomains.single()
+        assertEquals("Shipping", subdomain.name)
+        assertEquals("2.0.0", subdomain.artifacts.single().version)
+    }
+
+    @Test
     fun noOpUpdatesReturnChangesWithoutDocumentMutations() = runTest {
         val uri = "file:///architecture/zenwave-architecture.yml"
         val reader = MapDocumentReader(mapOf(uri to scalarManifest()))
