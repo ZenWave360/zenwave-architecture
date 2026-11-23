@@ -12,6 +12,10 @@ class ManifestResourceLoadException(
     message: String,
     val candidates: List<ManifestResolvedResource>,
     cause: Throwable? = null,
+    /** What happened to the last candidate tried, credentials removed; null when no candidate was tried. */
+    val finalError: String? = null,
+    /** What happened to each candidate, in the order of [candidates], credentials removed. */
+    val candidateErrors: List<String> = emptyList(),
 ) : IllegalStateException(message, cause)
 
 /**
@@ -197,6 +201,14 @@ class ZenWaveManifestLoader(
             options,
         )
         ManifestResourceLoadResult(artifact.path, resource, content)
+    } catch (error: ManifestResourceLoadException) {
+        ManifestResourceLoadResult(
+            path = artifact.path,
+            errorMessage = error.message ?: "Cannot load artifact '${artifact.path}'",
+            candidates = error.candidates,
+            finalError = error.finalError,
+            candidateErrors = error.candidateErrors,
+        )
     } catch (error: Exception) {
         ManifestResourceLoadResult(
             path = artifact.path,
@@ -270,6 +282,70 @@ class ZenWaveManifestLoader(
             baseContext(owner, artifact, artifact.path).copy(properties = manifest.config.properties),
             options,
         )
+    }
+
+    /**
+     * SR-R5: candidates for a path next to a declared artifact, loaded as a document of [owner] at
+     * [version]. `${version}` is [version] as given (blank means unset), `${content.path}` is the
+     * normalised [path], and `${artifact.*}` is unresolved. Apicurio and Maven are skipped.
+     *
+     * @throws ManifestResolutionException if [path] is empty, has a scheme, or leaves the owner's
+     * content with a `..` above the root.
+     */
+    fun buildOwnedDocumentCandidates(
+        manifest: ZenWaveManifest,
+        owner: ManifestArtifactOwner,
+        version: String?,
+        path: String,
+        options: ManifestLoadOptions = ManifestLoadOptions(),
+    ): List<ManifestResolvedResource> {
+        val normalized = normalizeOwnedPath(path)
+        val context = baseContext(owner, null, normalized)
+            .copy(version = version.nonBlankOrNull(), properties = manifest.config.properties)
+        return buildResourceCandidates(manifest, owner, null, normalized, context, options)
+    }
+
+    /** SR-R5: loads a path next to a declared artifact through the ordered sources; see [buildOwnedDocumentCandidates]. */
+    suspend fun loadOwnedDocument(
+        manifest: ZenWaveManifest,
+        owner: ManifestArtifactOwner,
+        version: String?,
+        path: String,
+        options: ManifestLoadOptions = ManifestLoadOptions(),
+    ): ManifestResourceLoadResult {
+        val normalized = normalizeOwnedPath(path)
+        val (resource, content) = loadOwnedResourceText(
+            manifest,
+            owner,
+            normalized,
+            artifact = null,
+            location = "${owner.artifactOwnerRef}.documents.$normalized",
+            options = options,
+            givenVersion = GivenVersion(version.nonBlankOrNull()),
+        )
+        return ManifestResourceLoadResult(normalized, resource, content)
+    }
+
+    private class GivenVersion(val value: String?)
+
+    private fun normalizeOwnedPath(path: String): String {
+        if (ManifestReferenceResolver.hasScheme(path)) {
+            throw ManifestResolutionException("Path '$path' is not relative to its owner")
+        }
+        val segments = mutableListOf<String>()
+        for (segment in path.replace('\\', '/').split('/')) {
+            when (segment) {
+                "", "." -> Unit
+                ".." -> if (segments.isEmpty()) {
+                    throw ManifestResolutionException("Path '$path' leaves the owner's content")
+                } else {
+                    segments.removeAt(segments.lastIndex)
+                }
+                else -> segments.add(segment)
+            }
+        }
+        if (segments.isEmpty()) throw ManifestResolutionException("Path '$path' is empty")
+        return segments.joinToString("/")
     }
 
     fun buildDocumentCandidates(
@@ -353,14 +429,17 @@ class ZenWaveManifestLoader(
         artifact: ManifestArtifact?,
         location: String,
         options: ManifestLoadOptions,
+        givenVersion: GivenVersion? = null,
     ): Pair<ManifestResolvedResource, String> {
         if (ManifestReferenceResolver.hasScheme(resourcePath)) {
             val direct = directResource(resourcePath)
             return direct to loadText(direct.uri)
         }
         val context = baseContext(owner, artifact, resourcePath).copy(properties = manifest.config.properties)
+            .let { if (givenVersion != null) it.copy(version = givenVersion.value) else it }
         val candidates = buildResourceCandidates(manifest, owner, artifact, resourcePath, context, options)
         var lastError: Throwable? = null
+        val candidateErrors = mutableListOf<String>()
         for (candidate in candidates) {
             try {
                 val text = candidate.archiveEntry?.let { entry ->
@@ -376,10 +455,18 @@ class ZenWaveManifestLoader(
                 return candidate to text
             } catch (error: Throwable) {
                 lastError = error
+                candidateErrors += redactErrorMessage(error.message ?: error::class.simpleName.orEmpty())
             }
         }
         val safeCandidates = candidates.map { it.copy(uri = redactUri(it.uri)) }
-        val finalError = lastError?.message?.let(::redactErrorMessage) ?: "no candidates were produced"
+        val finalError = lastError?.message?.let(::redactErrorMessage)
+            ?: if (candidates.isEmpty() && isRemoteManifest(manifest) &&
+                ManifestSourceName.WORKSPACE in manifest.config.contentResolution
+            ) {
+                "source 'workspace' was skipped because the manifest is remote (${redactUri(manifest.uri)})"
+            } else {
+                "no candidates were produced"
+            }
         throw ManifestResourceLoadException(
             buildString {
                 append("Unable to load resource for $location. Ordered candidates: ")
@@ -388,6 +475,8 @@ class ZenWaveManifestLoader(
             },
             safeCandidates,
             cause = null,
+            finalError = finalError,
+            candidateErrors = candidateErrors,
         )
     }
 
@@ -398,7 +487,7 @@ class ZenWaveManifestLoader(
         resourcePath: String,
         context: ManifestResolutionContext,
         options: ManifestLoadOptions,
-    ): List<ManifestResolvedResource> = resolveSourceOrder(manifest.config.contentResolution, options).flatMap { source ->
+    ): List<ManifestResolvedResource> = resolveSourceOrder(applicableSources(manifest), options).flatMap { source ->
         validateSourceReady(source, manifest.config.sources)
         when (source) {
             ManifestSourceName.WORKSPACE -> workspaceCandidates(manifest, resourcePath, context)
@@ -436,6 +525,17 @@ class ZenWaveManifestLoader(
             else -> throw ManifestResolutionException("Invalid content-resolution source '$source'")
         }
     }
+
+    /** SR-R4: a manifest read from an `http(s)` address has no directory, so `workspace` does not apply. */
+    private fun isRemoteManifest(manifest: ZenWaveManifest): Boolean =
+        manifest.uri.startsWith("http://", ignoreCase = true) || manifest.uri.startsWith("https://", ignoreCase = true)
+
+    private fun applicableSources(manifest: ZenWaveManifest): List<String> =
+        if (isRemoteManifest(manifest)) {
+            manifest.config.contentResolution.filterNot { it == ManifestSourceName.WORKSPACE }
+        } else {
+            manifest.config.contentResolution
+        }
 
     private fun resolveSourceOrder(contentResolution: List<String>, options: ManifestLoadOptions): List<String> {
         val preferred = options.preferredSource.nonBlankOrNull() ?: return contentResolution
@@ -648,6 +748,20 @@ class ZenWaveManifestLoader(
                 ownerId = owner.id,
                 ownerRepository = owner.repository,
             )
+            is ManifestSubdomain -> ManifestResolutionContext(
+                domainId = owner.domainId,
+                subdomainId = owner.id,
+                serviceId = "",
+                domainVersion = owner.domainVersion,
+                subdomainVersion = owner.version,
+                serviceVersion = null,
+                artifact = artifact,
+                contentPath = contentPath,
+                docs = emptyMap(),
+                version = artifact?.resolvedVersion ?: owner.documentVersion(),
+                ownerId = owner.id,
+                ownerRepository = owner.repository,
+            )
         }
 
     private fun resolveArtifactId(
@@ -780,6 +894,9 @@ class ZenWaveManifestLoader(
     ): ManifestSubdomain {
         val subdomainId = value["id"]?.toString().nonBlankOrNull() ?: subdomainKey
         val subdomainVersion = value["version"].stringValue()
+        val ownerRef = "$domainKey/$subdomainKey"
+        val docs = parseDocs(properties, diagnostics, ownerRef, value)
+        val artifacts = parseArtifacts(properties, diagnostics, ownerRef, value)
         val services = value.mapAt("services").map { (serviceKey, serviceValue) ->
             parseService(
                 properties, diagnostics, domainKey, domainId, domainVersion,
@@ -787,13 +904,20 @@ class ZenWaveManifestLoader(
             ).also(allServices::add)
         }
         return ManifestSubdomain(
-            subdomainKey,
-            subdomainId,
-            subdomainVersion,
-            value["name"]?.toString(),
-            value["description"]?.toString(),
-            services,
-            value.listAt("aliases").mapNotNull { it?.toString().nonBlankOrNull() },
+            key = subdomainKey,
+            id = subdomainId,
+            version = subdomainVersion,
+            name = value["name"]?.toString(),
+            description = value["description"]?.toString(),
+            services = services,
+            aliases = value.listAt("aliases").mapNotNull { it?.toString().nonBlankOrNull() },
+            domainKey = domainKey,
+            domainId = domainId,
+            domainVersion = domainVersion,
+            repository = (value["repository"] as? String).nonBlankOrNull(),
+            groupId = (value["groupId"] as? String).nonBlankOrNull(),
+            artifacts = artifacts,
+            docs = docs,
         )
     }
 
@@ -1151,7 +1275,7 @@ class ZenWaveManifestLoader(
     }
 
     private fun redactUri(uri: String): String = uri
-        .replace(Regex("""(://)[^/@\s]+@"""), "$1<redacted>@")
+        .replace(Regex("""(://)[^/?#\s]*@"""), "$1<redacted>@")
         .replace(Regex("""([?&][^=&#]+)=([^&#]*)"""), "$1=<redacted>")
 
     private fun redactErrorMessage(message: String): String = redactUri(message)

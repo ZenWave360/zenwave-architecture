@@ -49,6 +49,41 @@ class ArchitectureGraphBuilderTest {
     }
 
     @Test
+    fun subdomainArtifactsAreDeclaredByTheSubdomainNode() = runTest {
+        val uri = "file:///workspace/ordering/model/orders.zdl"
+        val loader = ZenWaveManifestLoader(
+            listOf(MapDocumentLoader(mapOf(uri to "event OrderPlaced { id String required }"))),
+            archiveEntryLoader = null,
+        )
+        val manifest = loader.parse(
+            "file:///workspace/zenwave.yml",
+            """
+            config:
+              sources:
+                workspace:
+                  basePathExpression: "${'$'}{owner.repository}"
+            domains:
+              sales:
+                subdomains:
+                  ordering:
+                    repository: ordering
+                    artifacts:
+                      - { type: zdl, path: model/orders.zdl, version: 1.0.0 }
+            """.trimIndent(),
+        )
+
+        val graph = ArchitectureGraphBuilder(loader).build(manifest).graph
+        val subdomainId = ArchitectureGraphIds.subdomain("sales", "ordering")
+        val artifact = graph.nodes.single { it.kind == ArchitectureNodeKind.ARTIFACT }
+        assertEquals(subdomainId, artifact.ownerId)
+        assertTrue(
+            graph.edges.any {
+                it.kind == ArchitectureEdgeKind.DECLARES_ARTIFACT && it.source == subdomainId && it.target == artifact.id
+            },
+        )
+    }
+
+    @Test
     fun indexesApiOnlyWorkspaceWithoutConsumptionAnalysis() = runTest {
         val resources = mapOf(
             "file:///workspace/orders/openapi.yml" to """

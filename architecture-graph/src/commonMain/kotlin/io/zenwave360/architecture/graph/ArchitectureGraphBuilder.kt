@@ -7,6 +7,7 @@ import io.zenwave360.architecture.manifest.ManifestConsumerIndex
 import io.zenwave360.architecture.manifest.ManifestDiagnosticSeverity
 import io.zenwave360.architecture.manifest.ManifestDomain
 import io.zenwave360.architecture.manifest.ManifestService
+import io.zenwave360.architecture.manifest.ManifestSubdomain
 import io.zenwave360.architecture.manifest.ResolvedManifestArtifact
 import io.zenwave360.architecture.manifest.ZenWaveManifest
 import io.zenwave360.architecture.manifest.ZenWaveManifestLoader
@@ -262,6 +263,7 @@ class ArchitectureGraphBuilder @JvmOverloads constructor(
         val id = artifactNodeId(artifact)
         val ownerId = when (val owner = artifact.owner) {
             is ManifestDomain -> ArchitectureGraphIds.domain(owner.key)
+            is ManifestSubdomain -> ArchitectureGraphIds.subdomain(owner.domainKey, owner.key)
             is ManifestService -> ArchitectureGraphIds.service(owner.serviceRef)
         }
         nodes[id] = ArchitectureNode(

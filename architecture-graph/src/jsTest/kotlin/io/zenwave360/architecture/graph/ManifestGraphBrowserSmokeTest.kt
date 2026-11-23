@@ -58,9 +58,14 @@ class ManifestGraphBrowserSmokeTest {
     private companion object {
         val MANIFEST = """
             config:
+              contentResolution: [workspace, git]
               sources:
                 workspace:
                   basePathExpression: "${'$'}{owner.repository}"
+                git:
+                  provider: generic
+                  server: https://architecture.example.com
+                  contentUrlExpression: "${'$'}{server}/${'$'}{owner.repository}/${'$'}{content.path}"
             domains:
               sales:
                 id: sales

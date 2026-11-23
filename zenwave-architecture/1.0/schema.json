@@ -210,6 +210,17 @@
         "name": { "type": "string" },
         "description": { "type": "string" },
         "aliases": { "$ref": "#/$defs/aliases" },
+        "repository": { "$ref": "#/$defs/nonBlank" },
+        "groupId": { "$ref": "#/$defs/nonBlank" },
+        "docs": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Za-z0-9._-]+$" },
+          "additionalProperties": { "$ref": "#/$defs/nonBlank" }
+        },
+        "artifacts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/artifact" }
+        },
         "services": {
           "type": "object",
           "propertyNames": { "$ref": "#/$defs/nonBlank" },

@@ -296,6 +296,7 @@ private class ManifestOrigins(
     @Suppress("UNCHECKED_CAST")
     private fun ownerNode(owner: ManifestArtifactOwner): SelectedManifestNode = when (owner) {
         is ManifestDomain -> domainNode(owner)
+        is ManifestSubdomain -> subdomainNode(owner)
         is ManifestService -> serviceNode(owner)
     }
 
@@ -308,6 +309,17 @@ private class ManifestOrigins(
             ?: throw ManifestEditException("domain '${domain.key}' has no source mapping")
         val domainsOrigin = child(ManifestOrigin(parsed.manifest.uri, ""), "domains", domains)
         return SelectedManifestNode(child(domainsOrigin, domain.key, rawDomain), rawDomain)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun subdomainNode(subdomain: ManifestSubdomain): SelectedManifestNode {
+        val domainNode = domainNode(parsed.manifest.domains.first { it.key == subdomain.domainKey })
+        val subdomains = domainNode.fields["subdomains"] as? Map<String, Any?>
+            ?: throw ManifestEditException("domain '${subdomain.domainKey}' has no subdomains source mapping")
+        val rawSubdomain = subdomains[subdomain.key] as? Map<String, Any?>
+            ?: throw ManifestEditException("subdomain '${subdomain.key}' has no source mapping")
+        val subdomainsOrigin = child(domainNode.origin, "subdomains", subdomains)
+        return SelectedManifestNode(child(subdomainsOrigin, subdomain.key, rawSubdomain), rawSubdomain)
     }
 
     @Suppress("UNCHECKED_CAST")
