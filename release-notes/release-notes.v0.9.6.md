@@ -1,6 +1,6 @@
 ## What's Changed
 
-Release **1.0.0** of the ZenWave Architecture Kotlin Multiplatform libraries (`architecture-manifest`, `architecture-graph`, `workspace-runtime`, `workspace-mcp`) on Maven Central, and of the four `@zenwave360/*` npm packages.
+Release **0.9.6** of the ZenWave Architecture Kotlin Multiplatform libraries (`architecture-manifest`, `architecture-graph`, `workspace-runtime`, `workspace-mcp`) on Maven Central, and of the four `@zenwave360/*` npm packages.
 
 ### Added
 
@@ -16,4 +16,4 @@ Release **1.0.0** of the ZenWave Architecture Kotlin Multiplatform libraries (`a
 - User info in URLs is redacted up to the last `@`.
 - Depends on `dsl-kotlin` 1.10.0 and `json-schema-ref-parser-kmp` 0.9.24.
 
-**Full Changelog**: https://github.com/ZenWave360/zenwave-architecture/compare/v0.9.5...v1.0.0
+**Full Changelog**: https://github.com/ZenWave360/zenwave-architecture/compare/v0.9.5...v0.9.6
